@@ -236,12 +236,6 @@
     animation: pulse-green 1.2s infinite;
   }
 
-  .btn-quick {
-    background: var(--surface2);
-    color: var(--blue);
-    border: 1px solid var(--blue);
-  }
-  .btn-quick:hover:not(:disabled) { background: rgba(79,195,247,0.1); }
 
   .btn-clear {
     background: var(--surface2);
@@ -886,6 +880,50 @@
     font-family: 'Barlow Condensed', sans-serif;
     letter-spacing: 0.06em;
   }
+
+  /* History search */
+  .hf-search-group { flex: 1; min-width: 200px; }
+  .hf-search {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.83rem;
+    padding: 6px 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .hf-search::placeholder { color: var(--text-dim); }
+  .hf-search:focus { border-color: var(--gold); }
+
+  /* History item click */
+  .history-item { cursor: pointer; }
+  .history-item:hover .history-view-hint { opacity: 1; }
+  .history-view-hint {
+    font-size: 0.62rem;
+    color: var(--gold);
+    opacity: 0;
+    transition: opacity 0.15s;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+  .history-tier-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin: 0 auto 3px;
+  }
+
+  /* Best rank highlight */
+  .history-item:first-child .history-num {
+    color: var(--gold);
+    font-size: 1rem;
+  }
+
 </style>
 </head>
 <body>
@@ -1049,6 +1087,15 @@
           <button class="hf-btn" id="hf-85" onclick="setFilter('85')">85+ OVR</button>
         </div>
       </div>
+      <div class="hf-group hf-search-group">
+        <input
+          type="text"
+          class="hf-search"
+          id="hf-search"
+          placeholder="Search player, club, nation, type..."
+          oninput="onHistorySearch(this.value)"
+        >
+      </div>
     </div>
     <div id="history-empty" class="history-empty">No spins yet — hit Spin to get started!</div>
     <div class="history-list" id="history-list"></div>
@@ -1068,156 +1115,216 @@
 const POSITIONS = ["GK","CB","LB","RB","LWB","RWB","CDM","CM","LM","RM","CAM","LW","RW","LF","RF","CF","ST"];
 
 const CARD_TYPES = [
-  { key: "rare_gold",        label: "Rare Gold",                tier: "gold",    minRating: 75, weight: 20, cssClass: "card-rare-gold",   color: "#FFD700" },
-  { key: "gold",             label: "Non-Rare Gold",            tier: "gold",    minRating: 75, weight: 18, cssClass: "card-gold",        color: "#b8960c" },
-  { key: "rare_silver",      label: "Rare Silver",              tier: "rare",    minRating: 65, weight: 10, cssClass: "card-rare-silver", color: "#b0bec5" },
-  { key: "silver",           label: "Non-Rare Silver",          tier: "rare",    minRating: 65, weight: 8,  cssClass: "card-silver",      color: "#607d8b" },
-  { key: "rare_bronze",      label: "Rare Bronze",              tier: "rare",    minRating: 55, weight: 7,  cssClass: "card-rare-bronze", color: "#cd7f32" },
-  { key: "bronze",           label: "Non-Rare Bronze",          tier: "rare",    minRating: 55, weight: 6,  cssClass: "card-bronze",      color: "#8d5a2a" },
-  { key: "totw_gold",        label: "Team of the Week",         tier: "special", minRating: 80, weight: 5,  cssClass: "card-totw",        color: "#cccccc" },
-  { key: "toty",             label: "Team of the Year",         tier: "special", minRating: 91, weight: 2,  cssClass: "card-toty",        color: "#4fc3f7" },
-  { key: "tots_gold",        label: "Team of the Season",       tier: "special", minRating: 87, weight: 3,  cssClass: "card-tots",        color: "#66bb6a" },
-  { key: "icon",             label: "Icon / Legend",            tier: "icon",    minRating: 88, weight: 2,  cssClass: "card-icon",        color: "#FFD700" },
-  { key: "fut_heroes",       label: "FUT Heroes",               tier: "special", minRating: 86, weight: 2,  cssClass: "card-hero",        color: "#ce93d8" },
-  { key: "ucl_live",         label: "Champions League RTTK",    tier: "special", minRating: 83, weight: 3,  cssClass: "card-special",     color: "#90caf9" },
-  { key: "fut_birthday",     label: "FUT Birthday",             tier: "special", minRating: 85, weight: 2,  cssClass: "card-pink",        color: "#f48fb1" },
-  { key: "player_moments",   label: "Player Moments",           tier: "special", minRating: 86, weight: 2,  cssClass: "card-teal",        color: "#4dd0e1" },
-  { key: "potm_pl",          label: "Premier League POTM",      tier: "special", minRating: 84, weight: 1,  cssClass: "card-orange",      color: "#ffb74d" },
-  { key: "potm_bundesliga",  label: "Bundesliga POTM",          tier: "special", minRating: 83, weight: 1,  cssClass: "card-green",       color: "#00e676" },
-  { key: "la_liga_potm",     label: "La Liga POTM",             tier: "special", minRating: 83, weight: 1,  cssClass: "card-special",     color: "#ef5350" },
-  { key: "potm_serie_a",     label: "Serie A POTM",             tier: "special", minRating: 83, weight: 1,  cssClass: "card-pink",        color: "#f48fb1" },
-  { key: "fut_future_stars", label: "Future Stars",             tier: "special", minRating: 86, weight: 2,  cssClass: "card-toty",        color: "#80d8ff" },
-  { key: "winter_wildcard",  label: "Winter Wildcard",          tier: "special", minRating: 85, weight: 1,  cssClass: "card-teal",        color: "#4dd0e1" },
-  { key: "shapeshifters",    label: "Shapeshifters",            tier: "special", minRating: 86, weight: 1,  cssClass: "card-orange",      color: "#ffb74d" },
-  { key: "trophy_titans",    label: "Trophy Titans",            tier: "special", minRating: 87, weight: 1,  cssClass: "card-hero",        color: "#ce93d8" },
-  { key: "fut_ballers",      label: "FUT Ballers",              tier: "special", minRating: 85, weight: 1,  cssClass: "card-green",       color: "#00e676" },
-  { key: "ones_to_watch",    label: "Ones to Watch",            tier: "special", minRating: 82, weight: 2,  cssClass: "card-orange",      color: "#ffb74d" },
-  { key: "motm",             label: "Man of the Match",         tier: "special", minRating: 82, weight: 2,  cssClass: "card-pink",        color: "#f48fb1" },
-  { key: "award_winner",     label: "Award Winner",             tier: "special", minRating: 86, weight: 1,  cssClass: "card-toty",        color: "#4fc3f7" },
+  { key:"rare_gold",        label:"Rare Gold",               tier:"gold",    minRating:75, weight:20, cssClass:"card-rare-gold",   color:"#FFD700" },
+  { key:"gold",             label:"Non-Rare Gold",           tier:"gold",    minRating:75, weight:18, cssClass:"card-gold",        color:"#b8960c" },
+  { key:"rare_silver",      label:"Rare Silver",             tier:"rare",    minRating:65, weight:10, cssClass:"card-rare-silver", color:"#b0bec5" },
+  { key:"silver",           label:"Non-Rare Silver",         tier:"rare",    minRating:65, weight:8,  cssClass:"card-silver",      color:"#607d8b" },
+  { key:"rare_bronze",      label:"Rare Bronze",             tier:"rare",    minRating:55, weight:7,  cssClass:"card-rare-bronze", color:"#cd7f32" },
+  { key:"bronze",           label:"Non-Rare Bronze",         tier:"rare",    minRating:55, weight:6,  cssClass:"card-bronze",      color:"#8d5a2a" },
+  { key:"totw_gold",        label:"Team of the Week",        tier:"special", minRating:80, weight:5,  cssClass:"card-totw",        color:"#cccccc" },
+  { key:"toty",             label:"Team of the Year",        tier:"special", minRating:91, weight:2,  cssClass:"card-toty",        color:"#4fc3f7" },
+  { key:"tots_gold",        label:"Team of the Season",      tier:"special", minRating:87, weight:3,  cssClass:"card-tots",        color:"#66bb6a" },
+  { key:"icon",             label:"Icon / Legend",           tier:"icon",    minRating:88, weight:2,  cssClass:"card-icon",        color:"#FFD700" },
+  { key:"fut_heroes",       label:"FUT Heroes",              tier:"special", minRating:86, weight:2,  cssClass:"card-hero",        color:"#ce93d8" },
+  { key:"ucl_live",         label:"Champions League RTTK",  tier:"special", minRating:83, weight:3,  cssClass:"card-special",     color:"#90caf9" },
+  { key:"fut_birthday",     label:"FUT Birthday",            tier:"special", minRating:85, weight:2,  cssClass:"card-pink",        color:"#f48fb1" },
+  { key:"player_moments",   label:"Player Moments",          tier:"special", minRating:86, weight:2,  cssClass:"card-teal",        color:"#4dd0e1" },
+  { key:"potm_pl",          label:"Premier League POTM",    tier:"special", minRating:84, weight:1,  cssClass:"card-orange",      color:"#ffb74d" },
+  { key:"potm_bundesliga",  label:"Bundesliga POTM",        tier:"special", minRating:83, weight:1,  cssClass:"card-green",       color:"#00e676" },
+  { key:"la_liga_potm",     label:"La Liga POTM",           tier:"special", minRating:83, weight:1,  cssClass:"card-special",     color:"#ef5350" },
+  { key:"potm_serie_a",     label:"Serie A POTM",           tier:"special", minRating:83, weight:1,  cssClass:"card-pink",        color:"#f48fb1" },
+  { key:"fut_future_stars", label:"Future Stars",           tier:"special", minRating:86, weight:2,  cssClass:"card-toty",        color:"#80d8ff" },
+  { key:"winter_wildcard",  label:"Winter Wildcard",        tier:"special", minRating:85, weight:1,  cssClass:"card-teal",        color:"#4dd0e1" },
+  { key:"shapeshifters",    label:"Shapeshifters",          tier:"special", minRating:86, weight:1,  cssClass:"card-orange",      color:"#ffb74d" },
+  { key:"trophy_titans",    label:"Trophy Titans",          tier:"special", minRating:87, weight:1,  cssClass:"card-hero",        color:"#ce93d8" },
+  { key:"fut_ballers",      label:"FUT Ballers",            tier:"special", minRating:85, weight:1,  cssClass:"card-green",       color:"#00e676" },
+  { key:"ones_to_watch",    label:"Ones to Watch",          tier:"special", minRating:82, weight:2,  cssClass:"card-orange",      color:"#ffb74d" },
+  { key:"motm",             label:"Man of the Match",       tier:"special", minRating:82, weight:2,  cssClass:"card-pink",        color:"#f48fb1" },
+  { key:"award_winner",     label:"Award Winner",           tier:"special", minRating:86, weight:1,  cssClass:"card-toty",        color:"#4fc3f7" },
 ];
 
 const RATING_BLOCKS = ["40+","50+","60+","70+","80+","83+","86+","90+"];
+const RATING_MINS = {"40+":40,"50+":50,"60+":60,"70+":70,"80+":80,"83+":83,"86+":86,"90+":90};
 
-// Real players database (100+ top players)
 const REAL_PLAYERS = [
-  // 96+
-  { name:"Kylian Mbappé",       pos:"ST",  club:"Real Madrid",        nation:"France",         rating:97, pace:97, shooting:94, passing:80, dribbling:96, defending:36, physical:78 },
-  { name:"Erling Haaland",      pos:"ST",  club:"Man City",           nation:"Norway",         rating:97, pace:88, shooting:97, passing:64, dribbling:82, defending:43, physical:92 },
-  { name:"Vinicius Jr",         pos:"LW",  club:"Real Madrid",        nation:"Brazil",         rating:96, pace:96, shooting:88, passing:80, dribbling:96, defending:29, physical:74 },
-  { name:"Rodri",               pos:"CDM", club:"Man City",           nation:"Spain",          rating:96, pace:62, shooting:72, passing:91, dribbling:83, defending:91, physical:84 },
-  { name:"Lionel Messi",        pos:"RW",  club:"Inter Miami",        nation:"Argentina",      rating:96, pace:79, shooting:92, passing:94, dribbling:99, defending:34, physical:63 },
-  // 94-95
-  { name:"Lamine Yamal",        pos:"RW",  club:"Barcelona",          nation:"Spain",          rating:95, pace:95, shooting:85, passing:87, dribbling:96, defending:30, physical:63 },
-  { name:"Florian Wirtz",       pos:"CAM", club:"Bayer Leverkusen",   nation:"Germany",        rating:94, pace:80, shooting:87, passing:90, dribbling:94, defending:44, physical:68 },
-  { name:"Phil Foden",          pos:"CAM", club:"Man City",           nation:"England",        rating:94, pace:81, shooting:87, passing:88, dribbling:93, defending:45, physical:69 },
-  { name:"Jude Bellingham",     pos:"CAM", club:"Real Madrid",        nation:"England",        rating:94, pace:77, shooting:84, passing:87, dribbling:91, defending:70, physical:84 },
-  { name:"Harry Kane",          pos:"ST",  club:"Bayern Munich",      nation:"England",        rating:94, pace:71, shooting:95, passing:84, dribbling:82, defending:47, physical:83 },
-  { name:"Mohamed Salah",       pos:"RW",  club:"Liverpool",          nation:"Egypt",          rating:93, pace:93, shooting:89, passing:80, dribbling:90, defending:44, physical:75 },
-  { name:"Pedri",               pos:"CM",  club:"Barcelona",          nation:"Spain",          rating:93, pace:73, shooting:74, passing:89, dribbling:93, defending:62, physical:61 },
-  { name:"Bukayo Saka",         pos:"RW",  club:"Arsenal",            nation:"England",        rating:93, pace:88, shooting:83, passing:87, dribbling:92, defending:52, physical:71 },
-  { name:"Heung-min Son",       pos:"LW",  club:"Tottenham",          nation:"South Korea",    rating:92, pace:89, shooting:87, passing:82, dribbling:88, defending:38, physical:70 },
-  { name:"Jamal Musiala",       pos:"CAM", club:"Bayern Munich",      nation:"Germany",        rating:93, pace:82, shooting:82, passing:86, dribbling:94, defending:43, physical:64 },
-  { name:"Toni Kroos",          pos:"CM",  club:"Real Madrid",        nation:"Germany",        rating:93, pace:53, shooting:77, passing:95, dribbling:82, defending:70, physical:72 },
-  { name:"Virgil van Dijk",     pos:"CB",  club:"Liverpool",          nation:"Netherlands",    rating:92, pace:78, shooting:60, passing:78, dribbling:72, defending:93, physical:90 },
-  { name:"Alisson Becker",      pos:"GK",  club:"Liverpool",          nation:"Brazil",         rating:92, pace:44, shooting:14, passing:78, dribbling:50, defending:92, physical:85 },
-  { name:"Manuel Neuer",        pos:"GK",  club:"Bayern Munich",      nation:"Germany",        rating:90, pace:51, shooting:15, passing:68, dribbling:48, defending:90, physical:83 },
-  { name:"Thibaut Courtois",    pos:"GK",  club:"Real Madrid",        nation:"Belgium",        rating:92, pace:43, shooting:14, passing:70, dribbling:46, defending:92, physical:88 },
-  // 91-93
-  { name:"Kevin De Bruyne",     pos:"CM",  club:"Man City",           nation:"Belgium",        rating:92, pace:76, shooting:86, passing:96, dribbling:87, defending:62, physical:79 },
-  { name:"Bruno Fernandes",     pos:"CAM", club:"Man United",         nation:"Portugal",       rating:91, pace:73, shooting:85, passing:91, dribbling:87, defending:57, physical:74 },
-  { name:"Ruben Dias",          pos:"CB",  club:"Man City",           nation:"Portugal",       rating:91, pace:72, shooting:46, passing:74, dribbling:64, defending:91, physical:84 },
-  { name:"Marquinhos",          pos:"CB",  club:"PSG",                nation:"Brazil",         rating:91, pace:74, shooting:51, passing:76, dribbling:70, defending:91, physical:82 },
-  { name:"Gavi",                pos:"CM",  club:"Barcelona",          nation:"Spain",          rating:91, pace:73, shooting:74, passing:87, dribbling:91, defending:64, physical:64 },
-  { name:"Antoine Griezmann",   pos:"CF",  club:"Atletico Madrid",    nation:"France",         rating:91, pace:79, shooting:87, passing:83, dribbling:87, defending:40, physical:74 },
-  { name:"Lautaro Martínez",    pos:"ST",  club:"Inter Milan",        nation:"Argentina",      rating:91, pace:77, shooting:90, passing:75, dribbling:84, defending:43, physical:81 },
-  { name:"Rafael Leão",         pos:"LW",  club:"AC Milan",           nation:"Portugal",       rating:91, pace:93, shooting:82, passing:74, dribbling:92, defending:30, physical:74 },
-  { name:"Khvicha Kvaratskhelia",pos:"LW", club:"PSG",               nation:"Georgia",        rating:91, pace:88, shooting:82, passing:80, dribbling:92, defending:32, physical:68 },
-  { name:"Federico Valverde",   pos:"CM",  club:"Real Madrid",        nation:"Uruguay",        rating:90, pace:85, shooting:80, passing:82, dribbling:84, defending:74, physical:82 },
-  { name:"Eduardo Camavinga",   pos:"CM",  club:"Real Madrid",        nation:"France",         rating:89, pace:81, shooting:71, passing:82, dribbling:86, defending:76, physical:74 },
-  { name:"Niclas Füllkrug",     pos:"ST",  club:"Dortmund",           nation:"Germany",        rating:86, pace:64, shooting:87, passing:68, dribbling:71, defending:40, physical:86 },
-  { name:"Declan Rice",         pos:"CDM", club:"Arsenal",            nation:"England",        rating:90, pace:71, shooting:74, passing:80, dribbling:78, defending:88, physical:82 },
-  { name:"Granit Xhaka",        pos:"CM",  club:"Bayer Leverkusen",   nation:"Switzerland",    rating:88, pace:62, shooting:74, passing:84, dribbling:75, defending:80, physical:77 },
-  { name:"Rúben Neves",         pos:"CDM", club:"Al-Hilal",           nation:"Portugal",       rating:87, pace:61, shooting:77, passing:84, dribbling:77, defending:80, physical:73 },
-  { name:"Kingsley Coman",      pos:"LW",  club:"Bayern Munich",      nation:"France",         rating:88, pace:92, shooting:77, passing:77, dribbling:89, defending:32, physical:66 },
-  { name:"Leroy Sane",          pos:"LW",  club:"Bayern Munich",      nation:"Germany",        rating:88, pace:93, shooting:80, passing:78, dribbling:89, defending:30, physical:66 },
-  { name:"Federico Chiesa",     pos:"RW",  club:"Liverpool",          nation:"Italy",          rating:87, pace:89, shooting:79, passing:77, dribbling:86, defending:39, physical:72 },
-  { name:"Serge Gnabry",        pos:"RW",  club:"Bayern Munich",      nation:"Germany",        rating:87, pace:88, shooting:80, passing:74, dribbling:87, defending:34, physical:71 },
-  { name:"Dani Carvajal",       pos:"RB",  club:"Real Madrid",        nation:"Spain",          rating:88, pace:80, shooting:62, passing:77, dribbling:77, defending:87, physical:75 },
-  { name:"Trent Alexander-Arnold",pos:"RB",club:"Real Madrid",       nation:"England",        rating:90, pace:80, shooting:68, passing:92, dribbling:79, defending:71, physical:69 },
-  { name:"Andrew Robertson",    pos:"LB",  club:"Liverpool",          nation:"Scotland",       rating:88, pace:83, shooting:58, passing:83, dribbling:78, defending:87, physical:74 },
-  { name:"Theo Hernández",      pos:"LB",  club:"AC Milan",           nation:"France",         rating:89, pace:91, shooting:68, passing:72, dribbling:84, defending:79, physical:79 },
-  { name:"Eder Militão",        pos:"CB",  club:"Real Madrid",        nation:"Brazil",         rating:89, pace:80, shooting:48, passing:68, dribbling:68, defending:89, physical:84 },
-  { name:"William Saliba",      pos:"CB",  club:"Arsenal",            nation:"France",         rating:89, pace:78, shooting:44, passing:71, dribbling:65, defending:89, physical:83 },
-  { name:"Alessandro Bastoni",  pos:"CB",  club:"Inter Milan",        nation:"Italy",          rating:88, pace:72, shooting:54, passing:82, dribbling:72, defending:87, physical:78 },
-  { name:"Dayot Upamecano",     pos:"CB",  club:"Bayern Munich",      nation:"France",         rating:87, pace:82, shooting:44, passing:67, dribbling:67, defending:87, physical:85 },
-  { name:"Gabriel Magalhães",   pos:"CB",  club:"Arsenal",            nation:"Brazil",         rating:87, pace:70, shooting:55, passing:64, dribbling:60, defending:87, physical:84 },
-  { name:"Marcus Thuram",       pos:"ST",  club:"Inter Milan",        nation:"France",         rating:88, pace:88, shooting:83, passing:70, dribbling:80, defending:40, physical:84 },
-  { name:"Olivier Giroud",      pos:"ST",  club:"LA Galaxy",          nation:"France",         rating:85, pace:59, shooting:83, passing:70, dribbling:70, defending:40, physical:82 },
-  { name:"Randal Kolo Muani",   pos:"ST",  club:"Juventus",           nation:"France",         rating:85, pace:89, shooting:79, passing:72, dribbling:79, defending:36, physical:79 },
-  { name:"Jonathan David",      pos:"ST",  club:"Lille",              nation:"Canada",         rating:87, pace:82, shooting:88, passing:72, dribbling:82, defending:35, physical:70 },
-  { name:"Alvaro Morata",       pos:"ST",  club:"AC Milan",           nation:"Spain",          rating:85, pace:79, shooting:81, passing:73, dribbling:77, defending:40, physical:78 },
-  { name:"Yann Sommer",         pos:"GK",  club:"Inter Milan",        nation:"Switzerland",    rating:88, pace:38, shooting:11, passing:64, dribbling:40, defending:88, physical:77 },
-  { name:"Mike Maignan",        pos:"GK",  club:"AC Milan",           nation:"France",         rating:89, pace:45, shooting:12, passing:68, dribbling:44, defending:89, physical:82 },
-  { name:"Marc-André ter Stegen",pos:"GK", club:"Barcelona",         nation:"Germany",        rating:90, pace:37, shooting:13, passing:78, dribbling:46, defending:90, physical:82 },
-  { name:"Gianluigi Donnarumma",pos:"GK",  club:"PSG",                nation:"Italy",          rating:90, pace:48, shooting:13, passing:64, dribbling:44, defending:90, physical:87 },
-  { name:"Jordan Pickford",     pos:"GK",  club:"Everton",            nation:"England",        rating:87, pace:44, shooting:11, passing:62, dribbling:44, defending:87, physical:76 },
-  { name:"Édouard Mendy",       pos:"GK",  club:"Al-Ahli",            nation:"Senegal",        rating:86, pace:40, shooting:11, passing:58, dribbling:40, defending:86, physical:83 },
-  // Icons / Legends
-  { name:"Ronaldo (Icon)",      pos:"ST",  club:"Icons",              nation:"Brazil",         rating:96, pace:92, shooting:96, passing:78, dribbling:95, defending:32, physical:80 },
-  { name:"Zinedine Zidane",     pos:"CAM", club:"Icons",              nation:"France",         rating:95, pace:74, shooting:80, passing:92, dribbling:97, defending:57, physical:71 },
-  { name:"Thierry Henry",       pos:"ST",  club:"Icons",              nation:"France",         rating:95, pace:93, shooting:93, passing:79, dribbling:92, defending:36, physical:78 },
-  { name:"Ronaldinho",          pos:"CAM", club:"Icons",              nation:"Brazil",         rating:95, pace:81, shooting:88, passing:89, dribbling:97, defending:38, physical:70 },
-  { name:"Roberto Carlos",      pos:"LB",  club:"Icons",              nation:"Brazil",         rating:94, pace:92, shooting:74, passing:80, dribbling:84, defending:86, physical:82 },
-  { name:"Cafu",                pos:"RB",  club:"Icons",              nation:"Brazil",         rating:94, pace:91, shooting:64, passing:77, dribbling:83, defending:87, physical:82 },
-  { name:"Andrés Iniesta",      pos:"CM",  club:"Icons",              nation:"Spain",          rating:94, pace:75, shooting:74, passing:88, dribbling:95, defending:62, physical:63 },
-  { name:"Xavi",                pos:"CM",  club:"Icons",              nation:"Spain",          rating:94, pace:72, shooting:72, passing:95, dribbling:90, defending:70, physical:66 },
-  { name:"Franck Ribéry",       pos:"LW",  club:"Icons",              nation:"France",         rating:93, pace:87, shooting:81, passing:83, dribbling:95, defending:36, physical:67 },
-  { name:"Marcelo",             pos:"LB",  club:"Icons",              nation:"Brazil",         rating:90, pace:86, shooting:64, passing:84, dribbling:88, defending:78, physical:72 },
-  { name:"Pelé (Icon)",         pos:"ST",  club:"Icons",              nation:"Brazil",         rating:98, pace:88, shooting:98, passing:85, dribbling:97, defending:41, physical:79 },
-  { name:"Diego Maradona",      pos:"CAM", club:"Icons",              nation:"Argentina",      rating:97, pace:82, shooting:88, passing:90, dribbling:98, defending:44, physical:70 },
-  { name:"Johan Cruyff",        pos:"CAM", club:"Icons",              nation:"Netherlands",    rating:96, pace:84, shooting:83, passing:88, dribbling:96, defending:52, physical:68 },
-  { name:"Franz Beckenbauer",   pos:"CB",  club:"Icons",              nation:"Germany",        rating:95, pace:72, shooting:72, passing:88, dribbling:81, defending:94, physical:78 },
-  { name:"Paolo Maldini",       pos:"LB",  club:"Icons",              nation:"Italy",          rating:95, pace:82, shooting:62, passing:78, dribbling:81, defending:95, physical:83 },
-  { name:"Ronaldo (Nazário)",   pos:"ST",  club:"Icons",              nation:"Brazil",         rating:97, pace:94, shooting:96, passing:76, dribbling:96, defending:32, physical:84 },
-  { name:"George Best",         pos:"RW",  club:"Icons",              nation:"N.Ireland",      rating:95, pace:88, shooting:86, passing:82, dribbling:97, defending:34, physical:66 },
-  { name:"Lev Yashin",          pos:"GK",  club:"Icons",              nation:"USSR",           rating:95, pace:42, shooting:12, passing:72, dribbling:44, defending:95, physical:85 },
-  { name:"Patrick Vieira",      pos:"CDM", club:"Icons",              nation:"France",         rating:92, pace:77, shooting:74, passing:84, dribbling:80, defending:90, physical:87 },
-  { name:"Didier Drogba",       pos:"ST",  club:"Icons",              nation:"Côte d'Ivoire",  rating:93, pace:79, shooting:93, passing:72, dribbling:84, defending:44, physical:95 },
-  { name:"Samuel Eto'o",        pos:"ST",  club:"Icons",              nation:"Cameroon",       rating:93, pace:92, shooting:91, passing:74, dribbling:88, defending:40, physical:80 },
-  { name:"Lúcio",               pos:"CB",  club:"Icons",              nation:"Brazil",         rating:91, pace:80, shooting:52, passing:72, dribbling:70, defending:91, physical:84 },
-  // Current top players extended
-  { name:"Nico Williams",       pos:"LW",  club:"Athletic Bilbao",    nation:"Spain",          rating:87, pace:93, shooting:80, passing:78, dribbling:90, defending:28, physical:64 },
-  { name:"Dušan Vlahović",      pos:"ST",  club:"Juventus",           nation:"Serbia",         rating:88, pace:78, shooting:90, passing:66, dribbling:76, defending:38, physical:84 },
-  { name:"Christopher Nkunku",  pos:"CF",  club:"Chelsea",            nation:"France",         rating:87, pace:81, shooting:84, passing:78, dribbling:87, defending:34, physical:72 },
-  { name:"Bernardo Silva",      pos:"CM",  club:"Man City",           nation:"Portugal",       rating:90, pace:79, shooting:79, passing:88, dribbling:89, defending:58, physical:68 },
-  { name:"Achraf Hakimi",       pos:"RB",  club:"PSG",                nation:"Morocco",        rating:88, pace:91, shooting:63, passing:74, dribbling:82, defending:80, physical:75 },
-  { name:"João Cancelo",        pos:"RB",  club:"Barcelona",          nation:"Portugal",       rating:88, pace:82, shooting:62, passing:84, dribbling:84, defending:82, physical:72 },
-  { name:"Youssouf Fofana",     pos:"CDM", club:"Real Madrid",        nation:"France",         rating:86, pace:77, shooting:68, passing:77, dribbling:79, defending:83, physical:80 },
-  { name:"Aurélien Tchouaméni", pos:"CDM", club:"Real Madrid",        nation:"France",         rating:88, pace:72, shooting:72, passing:78, dribbling:77, defending:87, physical:83 },
-  { name:"Mateo Kovačić",       pos:"CM",  club:"Man City",           nation:"Croatia",        rating:86, pace:74, shooting:71, passing:85, dribbling:84, defending:68, physical:70 },
-  { name:"Luka Modrić",         pos:"CM",  club:"Real Madrid",        nation:"Croatia",        rating:90, pace:73, shooting:76, passing:91, dribbling:90, defending:72, physical:67 },
-  { name:"N'Golo Kanté",        pos:"CDM", club:"Al-Ittihad",         nation:"France",         rating:88, pace:73, shooting:68, passing:76, dribbling:83, defending:91, physical:74 },
-  { name:"Casemiro",            pos:"CDM", club:"Man United",         nation:"Brazil",         rating:87, pace:57, shooting:68, passing:74, dribbling:72, defending:90, physical:86 },
-  { name:"Dani Olmo",           pos:"CAM", club:"Barcelona",          nation:"Spain",          rating:88, pace:76, shooting:82, passing:85, dribbling:87, defending:48, physical:70 },
-  { name:"Martin Ødegaard",     pos:"CAM", club:"Arsenal",            nation:"Norway",         rating:91, pace:76, shooting:83, passing:91, dribbling:91, defending:53, physical:67 },
-  { name:"Mason Mount",         pos:"CAM", club:"Man United",         nation:"England",        rating:85, pace:78, shooting:80, passing:82, dribbling:83, defending:52, physical:70 },
-  { name:"Sadio Mané",          pos:"LW",  club:"Al-Nassr",           nation:"Senegal",        rating:86, pace:89, shooting:84, passing:76, dribbling:87, defending:43, physical:74 },
-  { name:"Marcus Rashford",     pos:"LW",  club:"Aston Villa",        nation:"England",        rating:87, pace:92, shooting:82, passing:73, dribbling:87, defending:32, physical:74 },
-  { name:"Ollie Watkins",       pos:"ST",  club:"Aston Villa",        nation:"England",        rating:87, pace:86, shooting:84, passing:74, dribbling:79, defending:40, physical:76 },
-  { name:"Cole Palmer",         pos:"CAM", club:"Chelsea",            nation:"England",        rating:88, pace:79, shooting:86, passing:85, dribbling:89, defending:44, physical:68 },
+  { name:"Kylian Mbappé",         pos:"ST",  club:"Real Madrid",       nation:"France",        rating:97, pace:97, shooting:94, passing:80, dribbling:96, defending:36, physical:78 },
+  { name:"Erling Haaland",        pos:"ST",  club:"Man City",          nation:"Norway",        rating:97, pace:88, shooting:97, passing:64, dribbling:82, defending:43, physical:92 },
+  { name:"Vinicius Jr",           pos:"LW",  club:"Real Madrid",       nation:"Brazil",        rating:96, pace:96, shooting:88, passing:80, dribbling:96, defending:29, physical:74 },
+  { name:"Rodri",                 pos:"CDM", club:"Man City",          nation:"Spain",         rating:96, pace:62, shooting:72, passing:91, dribbling:83, defending:91, physical:84 },
+  { name:"Lionel Messi",          pos:"RW",  club:"Inter Miami",       nation:"Argentina",     rating:96, pace:79, shooting:92, passing:94, dribbling:99, defending:34, physical:63 },
+  { name:"Lamine Yamal",          pos:"RW",  club:"Barcelona",         nation:"Spain",         rating:95, pace:95, shooting:85, passing:87, dribbling:96, defending:30, physical:63 },
+  { name:"Florian Wirtz",         pos:"CAM", club:"Bayer Leverkusen",  nation:"Germany",       rating:94, pace:80, shooting:87, passing:90, dribbling:94, defending:44, physical:68 },
+  { name:"Phil Foden",            pos:"CAM", club:"Man City",          nation:"England",       rating:94, pace:81, shooting:87, passing:88, dribbling:93, defending:45, physical:69 },
+  { name:"Jude Bellingham",       pos:"CAM", club:"Real Madrid",       nation:"England",       rating:94, pace:77, shooting:84, passing:87, dribbling:91, defending:70, physical:84 },
+  { name:"Harry Kane",            pos:"ST",  club:"Bayern Munich",     nation:"England",       rating:94, pace:71, shooting:95, passing:84, dribbling:82, defending:47, physical:83 },
+  { name:"Mohamed Salah",         pos:"RW",  club:"Liverpool",         nation:"Egypt",         rating:93, pace:93, shooting:89, passing:80, dribbling:90, defending:44, physical:75 },
+  { name:"Pedri",                 pos:"CM",  club:"Barcelona",         nation:"Spain",         rating:93, pace:73, shooting:74, passing:89, dribbling:93, defending:62, physical:61 },
+  { name:"Bukayo Saka",           pos:"RW",  club:"Arsenal",           nation:"England",       rating:93, pace:88, shooting:83, passing:87, dribbling:92, defending:52, physical:71 },
+  { name:"Jamal Musiala",         pos:"CAM", club:"Bayern Munich",     nation:"Germany",       rating:93, pace:82, shooting:82, passing:86, dribbling:94, defending:43, physical:64 },
+  { name:"Toni Kroos",            pos:"CM",  club:"Real Madrid",       nation:"Germany",       rating:93, pace:53, shooting:77, passing:95, dribbling:82, defending:70, physical:72 },
+  { name:"Heung-min Son",         pos:"LW",  club:"Tottenham",         nation:"South Korea",   rating:92, pace:89, shooting:87, passing:82, dribbling:88, defending:38, physical:70 },
+  { name:"Virgil van Dijk",       pos:"CB",  club:"Liverpool",         nation:"Netherlands",   rating:92, pace:78, shooting:60, passing:78, dribbling:72, defending:93, physical:90 },
+  { name:"Alisson Becker",        pos:"GK",  club:"Liverpool",         nation:"Brazil",        rating:92, pace:44, shooting:14, passing:78, dribbling:50, defending:92, physical:85 },
+  { name:"Thibaut Courtois",      pos:"GK",  club:"Real Madrid",       nation:"Belgium",       rating:92, pace:43, shooting:14, passing:70, dribbling:46, defending:92, physical:88 },
+  { name:"Kevin De Bruyne",       pos:"CM",  club:"Man City",          nation:"Belgium",       rating:92, pace:76, shooting:86, passing:96, dribbling:87, defending:62, physical:79 },
+  { name:"Martin Ødegaard",       pos:"CAM", club:"Arsenal",           nation:"Norway",        rating:91, pace:76, shooting:83, passing:91, dribbling:91, defending:53, physical:67 },
+  { name:"Bruno Fernandes",       pos:"CAM", club:"Man United",        nation:"Portugal",      rating:91, pace:73, shooting:85, passing:91, dribbling:87, defending:57, physical:74 },
+  { name:"Ruben Dias",            pos:"CB",  club:"Man City",          nation:"Portugal",      rating:91, pace:72, shooting:46, passing:74, dribbling:64, defending:91, physical:84 },
+  { name:"Marquinhos",            pos:"CB",  club:"PSG",               nation:"Brazil",        rating:91, pace:74, shooting:51, passing:76, dribbling:70, defending:91, physical:82 },
+  { name:"Gavi",                  pos:"CM",  club:"Barcelona",         nation:"Spain",         rating:91, pace:73, shooting:74, passing:87, dribbling:91, defending:64, physical:64 },
+  { name:"Antoine Griezmann",     pos:"CF",  club:"Atletico Madrid",   nation:"France",        rating:91, pace:79, shooting:87, passing:83, dribbling:87, defending:40, physical:74 },
+  { name:"Lautaro Martínez",      pos:"ST",  club:"Inter Milan",       nation:"Argentina",     rating:91, pace:77, shooting:90, passing:75, dribbling:84, defending:43, physical:81 },
+  { name:"Rafael Leão",           pos:"LW",  club:"AC Milan",          nation:"Portugal",      rating:91, pace:93, shooting:82, passing:74, dribbling:92, defending:30, physical:74 },
+  { name:"Khvicha Kvaratskhelia", pos:"LW",  club:"PSG",               nation:"Georgia",       rating:91, pace:88, shooting:82, passing:80, dribbling:92, defending:32, physical:68 },
+  { name:"Manuel Neuer",          pos:"GK",  club:"Bayern Munich",     nation:"Germany",       rating:90, pace:51, shooting:15, passing:68, dribbling:48, defending:90, physical:83 },
+  { name:"Marc-André ter Stegen", pos:"GK",  club:"Barcelona",         nation:"Germany",       rating:90, pace:37, shooting:13, passing:78, dribbling:46, defending:90, physical:82 },
+  { name:"Gianluigi Donnarumma",  pos:"GK",  club:"PSG",               nation:"Italy",         rating:90, pace:48, shooting:13, passing:64, dribbling:44, defending:90, physical:87 },
+  { name:"Federico Valverde",     pos:"CM",  club:"Real Madrid",       nation:"Uruguay",       rating:90, pace:85, shooting:80, passing:82, dribbling:84, defending:74, physical:82 },
+  { name:"Declan Rice",           pos:"CDM", club:"Arsenal",           nation:"England",       rating:90, pace:71, shooting:74, passing:80, dribbling:78, defending:88, physical:82 },
+  { name:"Trent Alexander-Arnold",pos:"RB",  club:"Real Madrid",       nation:"England",       rating:90, pace:80, shooting:68, passing:92, dribbling:79, defending:71, physical:69 },
+  { name:"Bernardo Silva",        pos:"CM",  club:"Man City",          nation:"Portugal",      rating:90, pace:79, shooting:79, passing:88, dribbling:89, defending:58, physical:68 },
+  { name:"Luka Modrić",           pos:"CM",  club:"Real Madrid",       nation:"Croatia",       rating:90, pace:73, shooting:76, passing:91, dribbling:90, defending:72, physical:67 },
+  { name:"Eduardo Camavinga",     pos:"CM",  club:"Real Madrid",       nation:"France",        rating:89, pace:81, shooting:71, passing:82, dribbling:86, defending:76, physical:74 },
+  { name:"Mike Maignan",          pos:"GK",  club:"AC Milan",          nation:"France",        rating:89, pace:45, shooting:12, passing:68, dribbling:44, defending:89, physical:82 },
+  { name:"Theo Hernández",        pos:"LB",  club:"AC Milan",          nation:"France",        rating:89, pace:91, shooting:68, passing:72, dribbling:84, defending:79, physical:79 },
+  { name:"Eder Militão",          pos:"CB",  club:"Real Madrid",       nation:"Brazil",        rating:89, pace:80, shooting:48, passing:68, dribbling:68, defending:89, physical:84 },
+  { name:"William Saliba",        pos:"CB",  club:"Arsenal",           nation:"France",        rating:89, pace:78, shooting:44, passing:71, dribbling:65, defending:89, physical:83 },
+  { name:"Aurélien Tchouaméni",   pos:"CDM", club:"Real Madrid",       nation:"France",        rating:88, pace:72, shooting:72, passing:78, dribbling:77, defending:87, physical:83 },
+  { name:"Achraf Hakimi",         pos:"RB",  club:"PSG",               nation:"Morocco",       rating:88, pace:91, shooting:63, passing:74, dribbling:82, defending:80, physical:75 },
+  { name:"João Cancelo",          pos:"RB",  club:"Barcelona",         nation:"Portugal",      rating:88, pace:82, shooting:62, passing:84, dribbling:84, defending:82, physical:72 },
+  { name:"Dani Carvajal",         pos:"RB",  club:"Real Madrid",       nation:"Spain",         rating:88, pace:80, shooting:62, passing:77, dribbling:77, defending:87, physical:75 },
+  { name:"Andrew Robertson",      pos:"LB",  club:"Liverpool",         nation:"Scotland",      rating:88, pace:83, shooting:58, passing:83, dribbling:78, defending:87, physical:74 },
+  { name:"Alessandro Bastoni",    pos:"CB",  club:"Inter Milan",       nation:"Italy",         rating:88, pace:72, shooting:54, passing:82, dribbling:72, defending:87, physical:78 },
+  { name:"Yann Sommer",           pos:"GK",  club:"Inter Milan",       nation:"Switzerland",   rating:88, pace:38, shooting:11, passing:64, dribbling:40, defending:88, physical:77 },
+  { name:"Marcus Thuram",         pos:"ST",  club:"Inter Milan",       nation:"France",        rating:88, pace:88, shooting:83, passing:70, dribbling:80, defending:40, physical:84 },
+  { name:"Granit Xhaka",          pos:"CM",  club:"Bayer Leverkusen",  nation:"Switzerland",   rating:88, pace:62, shooting:74, passing:84, dribbling:75, defending:80, physical:77 },
+  { name:"Kingsley Coman",        pos:"LW",  club:"Bayern Munich",     nation:"France",        rating:88, pace:92, shooting:77, passing:77, dribbling:89, defending:32, physical:66 },
+  { name:"Leroy Sane",            pos:"LW",  club:"Bayern Munich",     nation:"Germany",       rating:88, pace:93, shooting:80, passing:78, dribbling:89, defending:30, physical:66 },
+  { name:"Dani Olmo",             pos:"CAM", club:"Barcelona",         nation:"Spain",         rating:88, pace:76, shooting:82, passing:85, dribbling:87, defending:48, physical:70 },
+  { name:"Cole Palmer",           pos:"CAM", club:"Chelsea",           nation:"England",       rating:88, pace:79, shooting:86, passing:85, dribbling:89, defending:44, physical:68 },
+  { name:"N'Golo Kanté",          pos:"CDM", club:"Al-Ittihad",        nation:"France",        rating:88, pace:73, shooting:68, passing:76, dribbling:83, defending:91, physical:74 },
+  { name:"Dušan Vlahović",        pos:"ST",  club:"Juventus",          nation:"Serbia",        rating:88, pace:78, shooting:90, passing:66, dribbling:76, defending:38, physical:84 },
+  { name:"Jordan Pickford",       pos:"GK",  club:"Everton",           nation:"England",       rating:87, pace:44, shooting:11, passing:62, dribbling:44, defending:87, physical:76 },
+  { name:"Dayot Upamecano",       pos:"CB",  club:"Bayern Munich",     nation:"France",        rating:87, pace:82, shooting:44, passing:67, dribbling:67, defending:87, physical:85 },
+  { name:"Gabriel Magalhães",     pos:"CB",  club:"Arsenal",           nation:"Brazil",        rating:87, pace:70, shooting:55, passing:64, dribbling:60, defending:87, physical:84 },
+  { name:"Federico Chiesa",       pos:"RW",  club:"Liverpool",         nation:"Italy",         rating:87, pace:89, shooting:79, passing:77, dribbling:86, defending:39, physical:72 },
+  { name:"Serge Gnabry",          pos:"RW",  club:"Bayern Munich",     nation:"Germany",       rating:87, pace:88, shooting:80, passing:74, dribbling:87, defending:34, physical:71 },
+  { name:"Rúben Neves",           pos:"CDM", club:"Al-Hilal",          nation:"Portugal",      rating:87, pace:61, shooting:77, passing:84, dribbling:77, defending:80, physical:73 },
+  { name:"Jonathan David",        pos:"ST",  club:"Lille",             nation:"Canada",        rating:87, pace:82, shooting:88, passing:72, dribbling:82, defending:35, physical:70 },
+  { name:"Casemiro",              pos:"CDM", club:"Man United",        nation:"Brazil",        rating:87, pace:57, shooting:68, passing:74, dribbling:72, defending:90, physical:86 },
+  { name:"Marcus Rashford",       pos:"LW",  club:"Aston Villa",       nation:"England",       rating:87, pace:92, shooting:82, passing:73, dribbling:87, defending:32, physical:74 },
+  { name:"Ollie Watkins",         pos:"ST",  club:"Aston Villa",       nation:"England",       rating:87, pace:86, shooting:84, passing:74, dribbling:79, defending:40, physical:76 },
+  { name:"Niclas Füllkrug",       pos:"ST",  club:"Dortmund",          nation:"Germany",       rating:86, pace:64, shooting:87, passing:68, dribbling:71, defending:40, physical:86 },
+  { name:"Sadio Mané",            pos:"LW",  club:"Al-Nassr",          nation:"Senegal",       rating:86, pace:89, shooting:84, passing:76, dribbling:87, defending:43, physical:74 },
+  { name:"Nico Williams",         pos:"LW",  club:"Athletic Bilbao",   nation:"Spain",         rating:87, pace:93, shooting:80, passing:78, dribbling:90, defending:28, physical:64 },
+  { name:"Christopher Nkunku",    pos:"CF",  club:"Chelsea",           nation:"France",        rating:87, pace:81, shooting:84, passing:78, dribbling:87, defending:34, physical:72 },
+  { name:"Mateo Kovačić",         pos:"CM",  club:"Man City",          nation:"Croatia",       rating:86, pace:74, shooting:71, passing:85, dribbling:84, defending:68, physical:70 },
+  { name:"Youssouf Fofana",       pos:"CDM", club:"Real Madrid",       nation:"France",        rating:86, pace:77, shooting:68, passing:77, dribbling:79, defending:83, physical:80 },
+  { name:"Olivier Giroud",        pos:"ST",  club:"LA Galaxy",         nation:"France",        rating:85, pace:59, shooting:83, passing:70, dribbling:70, defending:40, physical:82 },
+  { name:"Randal Kolo Muani",     pos:"ST",  club:"Juventus",          nation:"France",        rating:85, pace:89, shooting:79, passing:72, dribbling:79, defending:36, physical:79 },
+  { name:"Alvaro Morata",         pos:"ST",  club:"AC Milan",          nation:"Spain",         rating:85, pace:79, shooting:81, passing:73, dribbling:77, defending:40, physical:78 },
+  { name:"Mason Mount",           pos:"CAM", club:"Man United",        nation:"England",       rating:85, pace:78, shooting:80, passing:82, dribbling:83, defending:52, physical:70 },
+  // Icons
+  { name:"Pelé",                  pos:"ST",  club:"Icons",             nation:"Brazil",        rating:98, pace:88, shooting:98, passing:85, dribbling:97, defending:41, physical:79 },
+  { name:"Diego Maradona",        pos:"CAM", club:"Icons",             nation:"Argentina",     rating:97, pace:82, shooting:88, passing:90, dribbling:98, defending:44, physical:70 },
+  { name:"Ronaldo Nazário",       pos:"ST",  club:"Icons",             nation:"Brazil",        rating:97, pace:94, shooting:96, passing:76, dribbling:96, defending:32, physical:84 },
+  { name:"Ronaldo (R9)",          pos:"ST",  club:"Icons",             nation:"Brazil",        rating:96, pace:92, shooting:96, passing:78, dribbling:95, defending:32, physical:80 },
+  { name:"Zinedine Zidane",       pos:"CAM", club:"Icons",             nation:"France",        rating:95, pace:74, shooting:80, passing:92, dribbling:97, defending:57, physical:71 },
+  { name:"Thierry Henry",         pos:"ST",  club:"Icons",             nation:"France",        rating:95, pace:93, shooting:93, passing:79, dribbling:92, defending:36, physical:78 },
+  { name:"Ronaldinho",            pos:"CAM", club:"Icons",             nation:"Brazil",        rating:95, pace:81, shooting:88, passing:89, dribbling:97, defending:38, physical:70 },
+  { name:"Johan Cruyff",          pos:"CAM", club:"Icons",             nation:"Netherlands",   rating:96, pace:84, shooting:83, passing:88, dribbling:96, defending:52, physical:68 },
+  { name:"Franz Beckenbauer",     pos:"CB",  club:"Icons",             nation:"Germany",       rating:95, pace:72, shooting:72, passing:88, dribbling:81, defending:94, physical:78 },
+  { name:"Paolo Maldini",         pos:"LB",  club:"Icons",             nation:"Italy",         rating:95, pace:82, shooting:62, passing:78, dribbling:81, defending:95, physical:83 },
+  { name:"Roberto Carlos",        pos:"LB",  club:"Icons",             nation:"Brazil",        rating:94, pace:92, shooting:74, passing:80, dribbling:84, defending:86, physical:82 },
+  { name:"Cafu",                  pos:"RB",  club:"Icons",             nation:"Brazil",        rating:94, pace:91, shooting:64, passing:77, dribbling:83, defending:87, physical:82 },
+  { name:"Andrés Iniesta",        pos:"CM",  club:"Icons",             nation:"Spain",         rating:94, pace:75, shooting:74, passing:88, dribbling:95, defending:62, physical:63 },
+  { name:"Xavi Hernández",        pos:"CM",  club:"Icons",             nation:"Spain",         rating:94, pace:72, shooting:72, passing:95, dribbling:90, defending:70, physical:66 },
+  { name:"Franck Ribéry",         pos:"LW",  club:"Icons",             nation:"France",        rating:93, pace:87, shooting:81, passing:83, dribbling:95, defending:36, physical:67 },
+  { name:"Didier Drogba",         pos:"ST",  club:"Icons",             nation:"Côte d'Ivoire", rating:93, pace:79, shooting:93, passing:72, dribbling:84, defending:44, physical:95 },
+  { name:"Samuel Eto'o",          pos:"ST",  club:"Icons",             nation:"Cameroon",      rating:93, pace:92, shooting:91, passing:74, dribbling:88, defending:40, physical:80 },
+  { name:"George Best",           pos:"RW",  club:"Icons",             nation:"N.Ireland",     rating:95, pace:88, shooting:86, passing:82, dribbling:97, defending:34, physical:66 },
+  { name:"Lev Yashin",            pos:"GK",  club:"Icons",             nation:"USSR",          rating:95, pace:42, shooting:12, passing:72, dribbling:44, defending:95, physical:85 },
+  { name:"Patrick Vieira",        pos:"CDM", club:"Icons",             nation:"France",        rating:92, pace:77, shooting:74, passing:84, dribbling:80, defending:90, physical:87 },
+  { name:"Marcelo",               pos:"LB",  club:"Icons",             nation:"Brazil",        rating:90, pace:86, shooting:64, passing:84, dribbling:88, defending:78, physical:72 },
 ];
-
-// Rating block minimum values
-const RATING_MINS = { "40+":40, "50+":50, "60+":60, "70+":70, "80+":80, "83+":83, "86+":86, "90+":90 };
 
 // =============================================
 // STATE
 // =============================================
-let history = [];
-let stats = { total: 0, specials: 0, ratingSum: 0, best: 0 };
+let rollHistory = [];
+let stats = { total:0, specials:0, ratingSum:0, best:0 };
 let autoInterval = null;
 let autoCount = 0;
 let isSpinning = false;
+let historySort = 'best';   // 'best' | 'recent'
+let historyFilter = 'all';  // 'all' | 'special' | 'icon' | '90' | '85'
+let historySearch = '';
+let stopPanelOpen = false;
+
+// =============================================
+// INIT — populate selects
+// =============================================
+function populateStopSelects() {
+  const posEl  = document.getElementById('sc-pos');
+  const typeEl = document.getElementById('sc-type');
+  const ratEl  = document.getElementById('sc-rating');
+
+  POSITIONS.forEach(p => {
+    const o = document.createElement('option'); o.value = p; o.textContent = p;
+    posEl.appendChild(o);
+  });
+  CARD_TYPES.forEach(t => {
+    const o = document.createElement('option'); o.value = t.key; o.textContent = t.label;
+    typeEl.appendChild(o);
+  });
+  RATING_BLOCKS.forEach(r => {
+    const o = document.createElement('option'); o.value = r; o.textContent = r;
+    ratEl.appendChild(o);
+  });
+}
+populateStopSelects();
+
+// =============================================
+// STOP PANEL
+// =============================================
+function toggleStopPanel() {
+  stopPanelOpen = !stopPanelOpen;
+  document.getElementById('stop-panel-body').classList.toggle('open', stopPanelOpen);
+  document.getElementById('stop-chevron').classList.toggle('open', stopPanelOpen);
+}
+
+function updateStopBadge() {
+  const posOn    = document.getElementById('sc-pos-enabled').checked;
+  const typeOn   = document.getElementById('sc-type-enabled').checked;
+  const ratingOn = document.getElementById('sc-rating-enabled').checked;
+  const count    = [posOn, typeOn, ratingOn].filter(Boolean).length;
+  const badge    = document.getElementById('stop-badge');
+  const msg      = document.getElementById('stop-active-msg');
+  if (count > 0) {
+    badge.style.display = 'inline';
+    badge.textContent   = count + ' active';
+    msg.style.display   = 'flex';
+  } else {
+    badge.style.display = 'none';
+    msg.style.display   = 'none';
+  }
+}
+
+function getStopConditions() {
+  return {
+    pos:    document.getElementById('sc-pos-enabled').checked  ? document.getElementById('sc-pos').value    : null,
+    type:   document.getElementById('sc-type-enabled').checked ? document.getElementById('sc-type').value   : null,
+    rating: document.getElementById('sc-rating-enabled').checked ? document.getElementById('sc-rating').value : null,
+  };
+}
+
+function checkStopConditions(player, cardType, ratingLabel) {
+  const sc = getStopConditions();
+  if (sc.pos    && player.pos === sc.pos)       return true;
+  if (sc.type   && cardType.key === sc.type)    return true;
+  if (sc.rating && ratingLabel === sc.rating)   return true;
+  return false;
+}
 
 // =============================================
 // REEL SETUP
@@ -1225,223 +1332,211 @@ let isSpinning = false;
 function buildReel(innerId, items) {
   const inner = document.getElementById(innerId);
   inner.innerHTML = '';
-  // Add repeated items for scroll effect (3x)
-  const repeated = [...items, ...items, ...items];
-  repeated.forEach((item, i) => {
+  [...items, ...items, ...items].forEach(item => {
     const div = document.createElement('div');
     div.className = 'reel-item';
     div.textContent = item;
     inner.appendChild(div);
   });
 }
-
-buildReel('reel-inner-pos', POSITIONS);
-buildReel('reel-inner-type', CARD_TYPES.map(t => t.label));
+buildReel('reel-inner-pos',    POSITIONS);
+buildReel('reel-inner-type',   CARD_TYPES.map(t => t.label));
 buildReel('reel-inner-rating', RATING_BLOCKS);
 
-// Initialize reels to middle
 function initReelPositions() {
-  ['reel-inner-pos', 'reel-inner-type', 'reel-inner-rating'].forEach(id => {
+  ['reel-inner-pos','reel-inner-type','reel-inner-rating'].forEach(id => {
     const el = document.getElementById(id);
-    const itemH = 43;
-    const offset = -itemH; // show first item in center
     el.style.transition = 'none';
-    el.style.transform = `translateY(${offset}px)`;
+    el.style.transform  = 'translateY(-43px)';
   });
 }
 initReelPositions();
 
 // =============================================
-// SPIN LOGIC
+// SPIN HELPERS
 // =============================================
 function weightedRandom(items) {
-  const total = items.reduce((s, t) => s + t.weight, 0);
+  const total = items.reduce((s,t) => s + t.weight, 0);
   let r = Math.random() * total;
-  for (const item of items) {
-    r -= item.weight;
-    if (r <= 0) return item;
-  }
+  for (const item of items) { r -= item.weight; if (r <= 0) return item; }
   return items[items.length - 1];
 }
 
 function spinReel(innerId, items, targetIdx, duration, delay) {
   return new Promise(resolve => {
     const inner = document.getElementById(innerId);
-    const itemH = 43;
-    const centerOffset = 44; // reel height 130, center = 65, offset to center item
-    const n = items.length;
-    
-    // We want to land on targetIdx in the second repetition
-    const landingIdx = n + targetIdx;
-    const finalY = -((landingIdx * itemH) - centerOffset);
-    
-    // Spin past with extra spins
-    const extraSpins = 3 + Math.floor(Math.random() * 3);
-    const startSpin = -(n * itemH * extraSpins);
-    const totalTravel = startSpin + finalY;
-
+    const itemH = 43, n = items.length;
+    const centerOffset = 44;
+    const landingIdx   = n + targetIdx;
+    const finalY       = -((landingIdx * itemH) - centerOffset);
+    const extraSpins   = 3 + Math.floor(Math.random() * 3);
     inner.style.transition = 'none';
-    inner.style.transform = `translateY(0px)`;
-
+    inner.style.transform  = 'translateY(0px)';
     setTimeout(() => {
-      inner.style.transition = `transform ${duration}ms cubic-bezier(0.17, 0.67, 0.12, 1.0)`;
-      inner.style.transform = `translateY(${finalY - n * itemH * extraSpins}px)`;
-
+      inner.style.transition = `transform ${duration}ms cubic-bezier(0.17,0.67,0.12,1.0)`;
+      inner.style.transform  = `translateY(${finalY - n * itemH * extraSpins}px)`;
       setTimeout(() => {
-        // Snap to clean position
         inner.style.transition = 'none';
-        inner.style.transform = `translateY(${finalY}px)`;
+        inner.style.transform  = `translateY(${finalY}px)`;
         resolve();
       }, duration + 50);
     }, delay);
   });
 }
 
-function getCardColor(type, attr) {
-  const t = CARD_TYPES.find(t => t.key === type.key);
-  return t ? t.color : '#FFD700';
+function snapReel(innerId, items, idx) {
+  const inner = document.getElementById(innerId);
+  const itemH = 43, n = items.length;
+  const finalY = -((n + idx) * itemH - 44);
+  inner.style.transition = 'transform 0.18s ease';
+  inner.style.transform  = `translateY(${finalY}px)`;
 }
 
-function getRatingColor(r) {
-  if (r >= 90) return '#FFD700';
-  if (r >= 86) return '#90EE90';
-  if (r >= 80) return '#87CEEB';
-  if (r >= 75) return '#DEB887';
-  if (r >= 65) return '#C0C0C0';
-  return '#CD7F32';
+function pickPlayer(pos, effectiveMin) {
+  let c = REAL_PLAYERS.filter(p => isCompatiblePos(p.pos, pos) && p.rating >= effectiveMin);
+  if (!c.length) c = REAL_PLAYERS.filter(p => p.rating >= Math.max(40, effectiveMin - 15));
+  if (!c.length) c = REAL_PLAYERS;
+  return c[Math.floor(Math.random() * c.length)];
 }
 
+function isCompatiblePos(playerPos, spinPos) {
+  const g = {
+    GK:['GK'], CB:['CB','LB','RB','LWB','RWB'], LB:['LB','LWB','CB'], RB:['RB','RWB','CB'],
+    LWB:['LWB','LB'], RWB:['RWB','RB'], CDM:['CDM','CM'], CM:['CM','CAM','CDM'],
+    LM:['LM','LW','LF'], RM:['RM','RW','RF'], CAM:['CAM','CM','CF'],
+    LW:['LW','LM','LF'], RW:['RW','RM','RF'], LF:['LF','LW','CF','ST'],
+    RF:['RF','RW','CF','ST'], CF:['CF','ST','CAM'], ST:['ST','CF','LF','RF'],
+  };
+  return (g[spinPos] || [spinPos]).includes(playerPos);
+}
+
+// =============================================
+// MAIN SPIN
+// =============================================
 async function doSpin() {
   if (isSpinning) return;
   isSpinning = true;
   document.getElementById('btn-spin').disabled = true;
-  document.getElementById('btn-quick').disabled = true;
 
-  // Random selections
-  const posIdx = Math.floor(Math.random() * POSITIONS.length);
-  const cardType = weightedRandom(CARD_TYPES);
-  const typeIdx = CARD_TYPES.indexOf(cardType);
+  const posIdx    = Math.floor(Math.random() * POSITIONS.length);
+  const cardType  = weightedRandom(CARD_TYPES);
+  const typeIdx   = CARD_TYPES.indexOf(cardType);
   const ratingIdx = Math.floor(Math.random() * RATING_BLOCKS.length);
+  const effectiveMin = Math.max(RATING_MINS[RATING_BLOCKS[ratingIdx]], cardType.minRating);
+  const pos       = POSITIONS[posIdx];
+  const player    = pickPlayer(pos, effectiveMin);
+  const ratingLabel = RATING_BLOCKS[ratingIdx];
 
-  // Determine rating
-  const minRating = RATING_MINS[RATING_BLOCKS[ratingIdx]];
-  const typeMin = cardType.minRating;
-  const effectiveMin = Math.max(minRating, typeMin);
-
-  const spinner = document.getElementById('loading-text');
-  spinner.textContent = 'Spinning...';
-
-  // Animate reels with stagger
   await Promise.all([
-    spinReel('reel-inner-pos', POSITIONS, posIdx, 1400, 0),
-    spinReel('reel-inner-type', CARD_TYPES.map(t => t.label), typeIdx, 1700, 150),
-    spinReel('reel-inner-rating', RATING_BLOCKS, ratingIdx, 2000, 300),
+    spinReel('reel-inner-pos',    POSITIONS,                    posIdx,    1400, 0),
+    spinReel('reel-inner-type',   CARD_TYPES.map(t => t.label), typeIdx,   1700, 150),
+    spinReel('reel-inner-rating', RATING_BLOCKS,                ratingIdx, 2000, 300),
   ]);
 
-  // Find matching player
-  const pos = POSITIONS[posIdx];
-  const ratingLabel = RATING_BLOCKS[ratingIdx];
-  
-  // Get actual rating range
-  const actualRating = effectiveMin + Math.floor(Math.random() * Math.max(1, 99 - effectiveMin));
-  const clampedRating = Math.min(99, Math.max(40, actualRating));
-
-  // Find best matching players
-  let candidates = REAL_PLAYERS.filter(p => {
-    const posMatch = p.pos === pos || isCompatiblePos(p.pos, pos);
-    const ratingMatch = p.rating >= effectiveMin;
-    return posMatch && ratingMatch;
-  });
-
-  if (candidates.length === 0) {
-    candidates = REAL_PLAYERS.filter(p => p.rating >= Math.max(40, effectiveMin - 15));
-  }
-  if (candidates.length === 0) candidates = REAL_PLAYERS;
-
-  const player = candidates[Math.floor(Math.random() * candidates.length)];
-
-  // Show result
   showResult(player, cardType, pos, ratingLabel);
-
-  // Update stats
-  const isSpecial = cardType.tier === 'special' || cardType.tier === 'icon';
-  stats.total++;
-  if (isSpecial) stats.specials++;
-  stats.ratingSum += player.rating;
-  if (player.rating > stats.best) stats.best = player.rating;
-  updateStats();
-
-  // Add to history
-  addToHistory(player, cardType, pos, ratingLabel);
+  recordResult(player, cardType, ratingLabel);
 
   isSpinning = false;
   document.getElementById('btn-spin').disabled = false;
-  document.getElementById('btn-quick').disabled = false;
 }
 
-function isCompatiblePos(playerPos, spinPos) {
-  const posGroups = {
-    'GK': ['GK'],
-    'CB': ['CB','LB','RB','LWB','RWB'],
-    'LB': ['LB','LWB','CB'],
-    'RB': ['RB','RWB','CB'],
-    'LWB': ['LWB','LB'],
-    'RWB': ['RWB','RB'],
-    'CDM': ['CDM','CM'],
-    'CM': ['CM','CAM','CDM'],
-    'LM': ['LM','LW','LF'],
-    'RM': ['RM','RW','RF'],
-    'CAM': ['CAM','CM','CF'],
-    'LW': ['LW','LM','LF'],
-    'RW': ['RW','RM','RF'],
-    'LF': ['LF','LW','CF','ST'],
-    'RF': ['RF','RW','CF','ST'],
-    'CF': ['CF','ST','CAM'],
-    'ST': ['ST','CF','LF','RF'],
-  };
-  return (posGroups[spinPos] || [spinPos]).includes(playerPos);
+// =============================================
+// AUTO ROLL (instant snap, fast)
+// =============================================
+function doAutoRoll() {
+  if (isSpinning) return;
+  isSpinning = true;
+
+  const posIdx    = Math.floor(Math.random() * POSITIONS.length);
+  const cardType  = weightedRandom(CARD_TYPES);
+  const typeIdx   = CARD_TYPES.indexOf(cardType);
+  const ratingIdx = Math.floor(Math.random() * RATING_BLOCKS.length);
+  const effectiveMin = Math.max(RATING_MINS[RATING_BLOCKS[ratingIdx]], cardType.minRating);
+  const pos       = POSITIONS[posIdx];
+  const player    = pickPlayer(pos, effectiveMin);
+  const ratingLabel = RATING_BLOCKS[ratingIdx];
+
+  snapReel('reel-inner-pos',    POSITIONS,                    posIdx);
+  snapReel('reel-inner-type',   CARD_TYPES.map(t => t.label), typeIdx);
+  snapReel('reel-inner-rating', RATING_BLOCKS,                ratingIdx);
+
+  showResult(player, cardType, pos, ratingLabel);
+  recordResult(player, cardType, ratingLabel);
+
+  isSpinning = false;
+
+  // Check stop conditions
+  if (checkStopConditions(player, cardType, ratingLabel)) {
+    stopAuto(true);
+    flashStopPanel();
+  }
 }
 
+function toggleAuto() {
+  if (autoInterval) { stopAuto(false); return; }
+  const btn = document.getElementById('btn-auto');
+  btn.classList.add('active-auto');
+  btn.textContent = '⏹ Stop Auto';
+  autoCount = 0;
+  doAutoRoll();
+  autoInterval = setInterval(() => {
+    if (!isSpinning) {
+      autoCount++;
+      document.getElementById('auto-counter').textContent =
+        `Auto-rolling · ${autoCount} rolled`;
+      doAutoRoll();
+    }
+  }, 500);
+}
+
+function stopAuto(triggered) {
+  if (!autoInterval) return;
+  clearInterval(autoInterval);
+  autoInterval = null;
+  const btn = document.getElementById('btn-auto');
+  btn.classList.remove('active-auto');
+  btn.textContent = '⚡ Auto Roll';
+  document.getElementById('auto-counter').textContent =
+    triggered ? `🎯 Stop condition matched after ${autoCount} rolls!` : '';
+  autoCount = 0;
+}
+
+function flashStopPanel() {
+  const panel = document.getElementById('stop-panel');
+  panel.classList.add('stop-triggered');
+  setTimeout(() => panel.classList.remove('stop-triggered'), 700);
+  // Auto-open the panel so user sees which condition fired
+  if (!stopPanelOpen) toggleStopPanel();
+}
+
+// =============================================
+// SHOW RESULT
+// =============================================
 function showResult(player, cardType, pos, ratingLabel) {
   const section = document.getElementById('result-section');
-  const card = document.getElementById('result-card');
-
+  const card    = document.getElementById('result-card');
   section.classList.add('visible');
   card.className = `result-card tier-${cardType.tier}`;
   card.classList.add('result-flash-anim');
   setTimeout(() => card.classList.remove('result-flash-anim'), 700);
 
-  // FUT card visual
-  const visual = document.getElementById('fut-card-visual');
-  visual.className = `fut-card ${cardType.cssClass}`;
-
-  document.getElementById('fc-rating').textContent = player.rating;
-  document.getElementById('fc-pos').textContent = player.pos;
-  document.getElementById('fc-name').textContent = player.name.split(' ').pop();
+  document.getElementById('fut-card-visual').className = `fut-card ${cardType.cssClass}`;
+  document.getElementById('fc-rating').textContent     = player.rating;
+  document.getElementById('fc-pos').textContent        = player.pos;
+  document.getElementById('fc-name').textContent       = player.name.split(' ').pop();
   document.getElementById('fc-type-badge').textContent = cardType.label.split(' ').slice(0,2).join(' ');
+  document.getElementById('fc-avatar').innerHTML       = getPlayerEmoji(player.pos);
 
-  // Avatar
-  const avatarEl = document.getElementById('fc-avatar');
-  avatarEl.innerHTML = getPlayerEmoji(player.pos);
+  const attrs = ['PAC','SHO','PAS','DRI','DEF','PHY'];
+  const vals  = [player.pace,player.shooting,player.passing,player.dribbling,player.defending,player.physical];
+  document.getElementById('fc-stats').innerHTML = attrs.map((a,i) =>
+    `<div class="card-stat"><span class="card-stat-val">${vals[i]}</span><span class="card-stat-lbl">${a}</span></div>`
+  ).join('');
 
-  // Stats on card
-  const statsEl = document.getElementById('fc-stats');
-  const attrs = ['PAC', 'SHO', 'PAS', 'DRI', 'DEF', 'PHY'];
-  const vals = [player.pace, player.shooting, player.passing, player.dribbling, player.defending, player.physical];
-  statsEl.innerHTML = attrs.map((a, i) => `
-    <div class="card-stat">
-      <span class="card-stat-val">${vals[i]}</span>
-      <span class="card-stat-lbl">${a}</span>
-    </div>
-  `).join('');
+  document.getElementById('res-name').textContent  = player.name;
+  document.getElementById('res-name').style.color  = cardType.color;
 
-  // Result info
-  document.getElementById('res-name').textContent = player.name;
-  document.getElementById('res-name').style.color = cardType.color;
-
-  // Badges
-  const badges = document.getElementById('res-badges');
-  badges.innerHTML = `
+  document.getElementById('res-badges').innerHTML = `
     <span class="badge badge-rating">${player.rating} OVR</span>
     <span class="badge badge-pos">${player.pos}</span>
     <span class="badge badge-type">${cardType.label}</span>
@@ -1449,150 +1544,135 @@ function showResult(player, cardType, pos, ratingLabel) {
     <span class="badge badge-nation">${player.nation}</span>
   `;
 
-  // Attrs
-  const attrsEl = document.getElementById('res-attrs');
   const attrData = [
-    { label: 'PAC', val: player.pace },
-    { label: 'SHO', val: player.shooting },
-    { label: 'PAS', val: player.passing },
-    { label: 'DRI', val: player.dribbling },
-    { label: 'DEF', val: player.defending },
-    { label: 'PHY', val: player.physical },
+    {label:'PAC',val:player.pace},{label:'SHO',val:player.shooting},
+    {label:'PAS',val:player.passing},{label:'DRI',val:player.dribbling},
+    {label:'DEF',val:player.defending},{label:'PHY',val:player.physical},
   ];
-  attrsEl.innerHTML = attrData.map(a => `
-    <div class="attr-item">
-      <span class="attr-val" style="color:${getAttrColor(a.val)}">${a.val}</span>
-      <span class="attr-lbl">${a.label}</span>
-    </div>
-  `).join('');
+  document.getElementById('res-attrs').innerHTML = attrData.map(a =>
+    `<div class="attr-item"><span class="attr-val" style="color:${getAttrColor(a.val)}">${a.val}</span><span class="attr-lbl">${a.label}</span></div>`
+  ).join('');
 }
 
-function getAttrColor(val) {
-  if (val >= 90) return '#FFD700';
-  if (val >= 80) return '#66BB6A';
-  if (val >= 70) return '#42A5F5';
-  if (val >= 60) return '#FFA726';
-  if (val >= 50) return '#EF5350';
-  return '#9E9E9E';
+function getAttrColor(v) {
+  if (v>=90) return '#FFD700'; if (v>=80) return '#66BB6A';
+  if (v>=70) return '#42A5F5'; if (v>=60) return '#FFA726';
+  if (v>=50) return '#EF5350'; return '#9E9E9E';
 }
 
 function getPlayerEmoji(pos) {
-  if (pos === 'GK') return '🧤';
+  if (pos==='GK') return '🧤';
   if (['CB','LB','RB','LWB','RWB'].includes(pos)) return '🛡️';
   if (['CDM','CM','CAM','LM','RM'].includes(pos)) return '⚡';
   return '⚽';
 }
 
 // =============================================
-// QUICK ROLL (instant, no animation)
+// STATS + HISTORY
 // =============================================
-async function doQuickRoll() {
-  if (isSpinning) return;
-  isSpinning = true;
-
-  const posIdx = Math.floor(Math.random() * POSITIONS.length);
-  const cardType = weightedRandom(CARD_TYPES);
-  const typeIdx = CARD_TYPES.indexOf(cardType);
-  const ratingIdx = Math.floor(Math.random() * RATING_BLOCKS.length);
-  const minRating = RATING_MINS[RATING_BLOCKS[ratingIdx]];
-  const typeMin = cardType.minRating;
-  const effectiveMin = Math.max(minRating, typeMin);
-  const pos = POSITIONS[posIdx];
-
-  // Fast snap
-  const snapReel = (innerId, items, idx) => {
-    const inner = document.getElementById(innerId);
-    const itemH = 43;
-    const centerOffset = 44;
-    const n = items.length;
-    const landingIdx = n + idx;
-    const finalY = -((landingIdx * itemH) - centerOffset);
-    inner.style.transition = 'transform 0.15s ease';
-    inner.style.transform = `translateY(${finalY}px)`;
-  };
-  snapReel('reel-inner-pos', POSITIONS, posIdx);
-  snapReel('reel-inner-type', CARD_TYPES.map(t => t.label), typeIdx);
-  snapReel('reel-inner-rating', RATING_BLOCKS, ratingIdx);
-
-  // Find player
-  let candidates = REAL_PLAYERS.filter(p => {
-    return isCompatiblePos(p.pos, pos) && p.rating >= effectiveMin;
-  });
-  if (candidates.length === 0) candidates = REAL_PLAYERS.filter(p => p.rating >= Math.max(40, effectiveMin - 15));
-  if (candidates.length === 0) candidates = REAL_PLAYERS;
-
-  const player = candidates[Math.floor(Math.random() * candidates.length)];
-  const ratingLabel = RATING_BLOCKS[ratingIdx];
-
-  showResult(player, cardType, pos, ratingLabel);
-
+function recordResult(player, cardType, ratingLabel) {
   const isSpecial = cardType.tier === 'special' || cardType.tier === 'icon';
   stats.total++;
   if (isSpecial) stats.specials++;
   stats.ratingSum += player.rating;
   if (player.rating > stats.best) stats.best = player.rating;
   updateStats();
-  addToHistory(player, cardType, pos, ratingLabel);
 
-  isSpinning = false;
-}
-
-// =============================================
-// AUTO ROLL
-// =============================================
-function toggleAuto() {
-  const btn = document.getElementById('btn-auto');
-  if (autoInterval) {
-    clearInterval(autoInterval);
-    autoInterval = null;
-    btn.classList.remove('active-auto');
-    btn.textContent = '⚡ Auto Roll';
-    document.getElementById('auto-counter').textContent = '';
-    autoCount = 0;
-  } else {
-    btn.classList.add('active-auto');
-    btn.textContent = '⏹ Stop Auto';
-    autoCount = 0;
-    doQuickRoll();
-    autoInterval = setInterval(() => {
-      if (!isSpinning) {
-        autoCount++;
-        document.getElementById('auto-counter').textContent = `Auto-rolling... ${autoCount} rolled`;
-        doQuickRoll();
-      }
-    }, 600);
-  }
-}
-
-// =============================================
-// HISTORY
-// =============================================
-function addToHistory(player, cardType, pos, ratingLabel) {
   const now = new Date();
-  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  history.unshift({ player, cardType, pos, ratingLabel, time: timeStr });
-  if (history.length > 100) history.pop();
+  rollHistory.unshift({
+    player, cardType, ratingLabel,
+    time: now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'}),
+  });
+  if (rollHistory.length > 200) rollHistory.pop();
   renderHistory();
 }
 
+function updateStats() {
+  document.getElementById('stat-total').textContent    = stats.total;
+  document.getElementById('stat-specials').textContent = stats.specials;
+  document.getElementById('stat-avg').textContent      = stats.total > 0 ? Math.round(stats.ratingSum / stats.total) : '—';
+  document.getElementById('stat-best').textContent     = stats.best > 0 ? stats.best : '—';
+}
+
+// =============================================
+// HISTORY SORT / FILTER / SEARCH
+// =============================================
+function setSort(mode) {
+  historySort = mode;
+  document.getElementById('hf-sort-best').classList.toggle('active',   mode === 'best');
+  document.getElementById('hf-sort-recent').classList.toggle('active', mode === 'recent');
+  renderHistory();
+}
+
+function setFilter(mode) {
+  historyFilter = mode;
+  ['all','special','icon','90','85'].forEach(k =>
+    document.getElementById('hf-' + k).classList.toggle('active', k === mode)
+  );
+  renderHistory();
+}
+
+function onHistorySearch(val) {
+  historySearch = val.toLowerCase().trim();
+  renderHistory();
+}
+
+function getDisplayedHistory() {
+  let items = [...rollHistory];
+
+  // Filter
+  if (historyFilter === 'special') items = items.filter(i => i.cardType.tier === 'special');
+  else if (historyFilter === 'icon') items = items.filter(i => i.cardType.tier === 'icon');
+  else if (historyFilter === '90')  items = items.filter(i => i.player.rating >= 90);
+  else if (historyFilter === '85')  items = items.filter(i => i.player.rating >= 85);
+
+  // Search
+  if (historySearch) {
+    items = items.filter(i =>
+      i.player.name.toLowerCase().includes(historySearch) ||
+      i.player.club.toLowerCase().includes(historySearch) ||
+      i.player.nation.toLowerCase().includes(historySearch) ||
+      i.cardType.label.toLowerCase().includes(historySearch) ||
+      i.player.pos.toLowerCase().includes(historySearch)
+    );
+  }
+
+  // Sort
+  if (historySort === 'best') {
+    items.sort((a, b) => b.player.rating - a.player.rating);
+  }
+  // 'recent' is insertion order (already newest-first)
+
+  return items;
+}
+
 function renderHistory() {
-  const list = document.getElementById('history-list');
+  const list  = document.getElementById('history-list');
   const empty = document.getElementById('history-empty');
   const count = document.getElementById('history-count');
 
-  count.textContent = `${history.length} roll${history.length !== 1 ? 's' : ''}`;
+  count.textContent = `${rollHistory.length} roll${rollHistory.length !== 1 ? 's' : ''}`;
 
-  if (history.length === 0) {
+  if (rollHistory.length === 0) {
     empty.style.display = 'block';
     list.innerHTML = '';
     return;
   }
   empty.style.display = 'none';
 
-  list.innerHTML = history.map((item, i) => `
-    <div class="history-item">
-      <span class="history-num">${i + 1}</span>
-      <div class="history-mini-card ${item.cardType.cssClass}" style="background:${item.cardType.cssClass}">
+  const displayed = getDisplayedHistory();
+
+  if (displayed.length === 0) {
+    list.innerHTML = `<div class="history-empty" style="display:block">No results match the current filter.</div>`;
+    return;
+  }
+
+  list.innerHTML = displayed.map((item, i) => {
+    const rank = historySort === 'best' ? `#${i+1}` : '';
+    return `
+    <div class="history-item" onclick="viewHistoryCard(${rollHistory.indexOf(item)})" title="Click to view full card">
+      <span class="history-num">${rank || (rollHistory.indexOf(item) + 1)}</span>
+      <div class="history-mini-card ${item.cardType.cssClass}">
         <div class="history-mini-rating">${item.player.rating}</div>
         <div class="history-mini-pos">${item.player.pos}</div>
       </div>
@@ -1601,29 +1681,37 @@ function renderHistory() {
         <div class="history-sub">${item.cardType.label} · ${item.player.club} · ${item.player.nation}</div>
       </div>
       <div class="history-right">
+        <div class="history-tier-dot" style="background:${item.cardType.color}"></div>
         <div class="history-time">${item.time}</div>
+        <div class="history-view-hint">👁 View</div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
+function viewHistoryCard(idx) {
+  const item = rollHistory[idx];
+  if (!item) return;
+  showResult(item.player, item.cardType, item.player.pos, item.ratingLabel);
+  // Scroll to result
+  document.getElementById('result-section').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// =============================================
+// CLEAR
+// =============================================
 function clearHistory() {
-  history = [];
-  stats = { total: 0, specials: 0, ratingSum: 0, best: 0 };
+  rollHistory = [];
+  stats = { total:0, specials:0, ratingSum:0, best:0 };
   updateStats();
   renderHistory();
   document.getElementById('result-section').classList.remove('visible');
-  if (autoInterval) toggleAuto();
+  if (autoInterval) stopAuto(false);
 }
 
-function updateStats() {
-  document.getElementById('stat-total').textContent = stats.total;
-  document.getElementById('stat-specials').textContent = stats.specials;
-  document.getElementById('stat-avg').textContent = stats.total > 0 ? Math.round(stats.ratingSum / stats.total) : '—';
-  document.getElementById('stat-best').textContent = stats.best > 0 ? stats.best : '—';
-}
-
-// Init
+// =============================================
+// INIT
+// =============================================
 renderHistory();
 </script>
 </body>
