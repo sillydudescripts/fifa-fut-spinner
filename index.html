@@ -1584,6 +1584,7 @@ function recordResult(player, cardType, ratingLabel) {
     time: now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'}),
   });
   if (rollHistory.length > 200) rollHistory.pop();
+  saveToStorage();
   renderHistory();
 }
 
@@ -1698,11 +1699,59 @@ function viewHistoryCard(idx) {
 }
 
 // =============================================
+// PERSISTENCE — localStorage (much larger than cookies)
+// =============================================
+const SAVE_KEY = 'futspinner_v1';
+
+function saveToStorage() {
+  try {
+    // CARD_TYPES objects can't be serialised by reference, so we store the key
+    const payload = {
+      rollHistory: rollHistory.map(item => ({
+        player:      item.player,
+        cardTypeKey: item.cardType.key,
+        ratingLabel: item.ratingLabel,
+        time:        item.time,
+      })),
+      stats,
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+  } catch(e) {
+    // storage full or unavailable — fail silently
+    console.warn('FUT Spinner: could not save to localStorage', e);
+  }
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return;
+    const payload = JSON.parse(raw);
+
+    // Re-hydrate cardType from key
+    if (Array.isArray(payload.rollHistory)) {
+      rollHistory = payload.rollHistory.map(item => {
+        const cardType = CARD_TYPES.find(t => t.key === item.cardTypeKey);
+        if (!cardType) return null;
+        return { player: item.player, cardType, ratingLabel: item.ratingLabel, time: item.time };
+      }).filter(Boolean);
+    }
+
+    if (payload.stats) {
+      stats = payload.stats;
+    }
+  } catch(e) {
+    console.warn('FUT Spinner: could not load from localStorage', e);
+  }
+}
+
+// =============================================
 // CLEAR
 // =============================================
 function clearHistory() {
   rollHistory = [];
   stats = { total:0, specials:0, ratingSum:0, best:0 };
+  saveToStorage();
   updateStats();
   renderHistory();
   document.getElementById('result-section').classList.remove('visible');
@@ -1710,9 +1759,22 @@ function clearHistory() {
 }
 
 // =============================================
-// INIT
+// INIT — load saved data, then render
 // =============================================
+loadFromStorage();
+updateStats();
 renderHistory();
+
+// Show a subtle restored banner if we loaded history
+if (rollHistory.length > 0) {
+  const counter = document.getElementById('auto-counter');
+  counter.style.color = 'var(--gold)';
+  counter.textContent = `✔ Restored ${rollHistory.length} saved roll${rollHistory.length !== 1 ? 's' : ''} from last session`;
+  setTimeout(() => {
+    counter.style.color = '';
+    counter.textContent = '';
+  }, 3500);
+}
 </script>
 </body>
 </html>
