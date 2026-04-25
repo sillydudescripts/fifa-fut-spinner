@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
 <title>FC FUT Spinner</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
@@ -236,7 +237,7 @@
 
   .fut-card {
     width: 168px;
-    height: 230px;
+    height: 250px;
     border-radius: 12px;
     position: relative;
     overflow: hidden;
@@ -364,39 +365,32 @@
     margin-top: 4px;
   }
 
-  /* PLAYER IMAGE — fills middle of card, no extra circle border */
+  /* PLAYER IMAGE — fixed height, never grows into stats */
   .fc-image-area {
-    flex: 1;
-    position: relative;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    z-index: 2;
-    overflow: hidden;
-    min-height: 0;
-  }
-
-  /* SVG avatar fills the space naturally */
-  .fc-avatar-svg {
-    width: 100%;
-    height: 100%;
-    display: block;
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    top: 0;
-    object-fit: cover;
-  }
-
-  /* Fallback emoji avatar (for non-SVG) */
-  .fc-avatar-fallback {
-    width: 100%;
-    height: 100%;
+    flex-shrink: 0;
+    height: 88px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 3.2rem;
+    z-index: 2;
+    overflow: hidden;
+  }
+
+  .fc-avatar-big {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.07);
+    border: 2px solid rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.6rem;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .fc-avatar-big img {
+    width: 100%; height: 100%; object-fit: cover; object-position: top center; border-radius: 50%; display: block;
   }
 
   /* BOTTOM: name then 6 stats */
@@ -504,6 +498,16 @@
   .history-view-hint { font-size:0.62rem; color:var(--gold); opacity:0; transition:opacity 0.15s; font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; margin-top:2px; }
   .history-item:hover .history-view-hint { opacity:1; }
 
+  .lock-btn {
+    background:none; border:1px solid var(--border); border-radius:5px;
+    color:var(--text-dim); font-size:0.75rem; padding:3px 7px; cursor:pointer;
+    transition:all 0.15s; flex-shrink:0; line-height:1;
+  }
+  .lock-btn:hover { border-color:var(--gold); color:var(--gold); }
+  .lock-btn.locked { border-color:var(--gold); color:var(--gold); background:rgba(255,215,0,0.1); }
+  .history-item.is-locked { background:rgba(255,215,0,0.04); }
+  .history-item.is-locked .history-name::after { content:' 🔒'; font-size:0.65rem; }
+
   @keyframes result-flash {
     0%   { border-color:var(--gold); box-shadow:0 0 0 rgba(255,215,0,0); }
     50%  { border-color:var(--gold); box-shadow:0 0 40px rgba(255,215,0,0.4); }
@@ -540,7 +544,7 @@
     .reels-row { flex-direction:column; align-items:center; }
     .reel-container { max-width:100%; width:100%; }
     .result-inner { flex-direction:column; align-items:flex-start; }
-    .fut-card { width:148px; height:200px; }
+    .fut-card { width:148px; height:215px; }
     .result-player-name { font-size:1.4rem; }
   }
 </style>
@@ -757,6 +761,7 @@
           <button class="hf-btn"        id="hf-icon"    onclick="setFilter('icon')">👑 Icons</button>
           <button class="hf-btn"        id="hf-90"      onclick="setFilter('90')">90+ OVR</button>
           <button class="hf-btn"        id="hf-85"      onclick="setFilter('85')">85+ OVR</button>
+          <button class="hf-btn"        id="hf-locked"  onclick="setFilter('locked')">🔒 Locked</button>
         </div>
       </div>
       <div class="hf-group hf-search-group">
@@ -818,6 +823,32 @@ function getCardScore(item) {
 
 const RATING_BLOCKS = ["40+","50+","60+","70+","80+","83+","86+","90+"];
 
+// =============================================
+// PLAYER IMAGES
+// =============================================
+const BASE_IMG_URL = "https://raw.githubusercontent.com/sillydudescripts/fifa-fut-spinner/playerimages/";
+
+const PLAYER_IMAGES = {
+  "Kylian Mbappé":       BASE_IMG_URL + "mbappe.png",
+  "Erling Haaland":      BASE_IMG_URL + "haaland.png",
+  "Cristiano Ronaldo":   BASE_IMG_URL + "ronaldo.png",
+  "Benjamin Šeško":      BASE_IMG_URL + "sesko.png",
+  "Neymar":              BASE_IMG_URL + "neymar.png",
+  "André Ayew":          BASE_IMG_URL + "andre%20ayew.png",
+  "Bruno Fernandes":     BASE_IMG_URL + "bruno%20fernandes.png",
+  "Jay Turner-Cooke":    BASE_IMG_URL + "jay%20turner.png",
+  "Josh Wilson-Esbrand": BASE_IMG_URL + "josh%20wilson.png",
+  "Marcus Thuram":       BASE_IMG_URL + "marcus%20thuram.png",
+  // ── NEW IMAGES ──
+  "Florian Wirtz":       BASE_IMG_URL + "florian%20wirtz.png",
+  "Franz Beckenbauer":   BASE_IMG_URL + "franz%20beckenbauer.png",
+  "Johan Cruyff":        BASE_IMG_URL + "johan%20cruyff.png",
+  "Lev Yashin":          BASE_IMG_URL + "lev%20yashin.png",
+  "Nico Williams":       BASE_IMG_URL + "nico%20williams.png",
+  "Paolo Maldini":       BASE_IMG_URL + "paolo%20maldini.png",
+  "Ronaldo Nazário":     BASE_IMG_URL + "ronaldo%20nazario.png",
+};
+
 const FLAG_MAP = {
   "France":"🇫🇷","Brazil":"🇧🇷","Argentina":"🇦🇷","England":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Germany":"🇩🇪","Spain":"🇪🇸",
   "Portugal":"🇵🇹","Netherlands":"🇳🇱","Belgium":"🇧🇪","Norway":"🇳🇴","Croatia":"🇭🇷","Uruguay":"🇺🇾",
@@ -842,32 +873,23 @@ function getClubEmoji(club) { return CLUB_EMOJI[club] || "⚽"; }
 
 // =============================================
 // PLAYER AVATAR SVG GENERATOR
-// Creates distinctive illustrated player silhouettes based on player data
-// No external image loading — everything is self-contained SVG
 // =============================================
-
-// Deterministic hash for consistent per-player appearance
 function strHash(s) {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = Math.imul(31, h) + s.charCodeAt(i) | 0;
   return Math.abs(h);
 }
 
-// Generate a unique player avatar SVG based on name + position + card tier
 function generatePlayerSVG(player, cardType, displayRating) {
   const h = strHash(player.name);
   const pos = player.pos;
-  const tier = cardType.tier;
 
-  // Skin tone palette — pick deterministically
   const skinTones = ['#FDBCB4','#F1A07A','#C68B55','#9B6A3A','#7B4F2E','#4A2F1A'];
   const skin = skinTones[h % skinTones.length];
 
-  // Hair color
   const hairColors = ['#1a0800','#2c1810','#6b3a2a','#c8843e','#e8c060','#d0d0d0','#1a1a2e'];
   const hair = hairColors[(h >> 3) % hairColors.length];
 
-  // Kit primary color — based on card type color, desaturated slightly
   const kitColors = {
     'card-rare-gold':    ['#8B6914','#D4A820'],
     'card-gold':         ['#7A5C00','#C49A1A'],
@@ -890,21 +912,13 @@ function generatePlayerSVG(player, cardType, displayRating) {
   };
   const [kitDark, kitLight] = kitColors[cardType.cssClass] || ['#1a1a2e','#2e2e50'];
 
-  // Accent/trim color
   const accentColors = ['#ff6b00','#00c8ff','#ff003c','#00ff88','#ff00aa','#ffdd00','#aa00ff'];
   const accent = accentColors[(h >> 6) % accentColors.length];
 
-  // Body shape variation
   const shoulderW = 34 + (h % 10);
   const neckH = 8 + ((h >> 2) % 4);
-
-  // Hair style selector
   const hairStyle = (h >> 8) % 5;
-
-  // Number on shirt
   const shirtNum = ((h >> 12) % 99) + 1;
-
-  // Action pose — subtle lean based on hash
   const leanX = ((h >> 15) % 7) - 3;
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 168 120" width="168" height="120" style="display:block;">
@@ -922,115 +936,65 @@ function generatePlayerSVG(player, cardType, displayRating) {
       <stop offset="100%" stop-color="${adjustBrightness(skin, -20)}"/>
     </linearGradient>
   </defs>
-
-  <!-- Glow bg -->
   <ellipse cx="84" cy="90" rx="55" ry="35" fill="url(#glow-${h})" opacity="0.6"/>
-
-  <!-- Shadow on ground -->
   <ellipse cx="${84 + leanX}" cy="118" rx="28" ry="5" fill="rgba(0,0,0,0.4)"/>
-
-  <!-- LEGS -->
   <g transform="translate(${84 + leanX}, 60)">
-    <!-- Left leg -->
     <rect x="-14" y="0" width="12" height="32" rx="4" fill="url(#kit-${h})"/>
-    <!-- Left shin stripe -->
     <rect x="-14" y="18" width="12" height="4" fill="${accent}" opacity="0.7"/>
-    <!-- Left sock -->
     <rect x="-15" y="32" width="13" height="10" rx="3" fill="${kitLight}"/>
-    <!-- Left boot -->
     <ellipse cx="-9" cy="43" rx="9" ry="5" fill="#111"/>
     <rect x="-17" y="40" width="16" height="6" rx="3" fill="#111"/>
-
-    <!-- Right leg -->
     <rect x="2" y="0" width="12" height="32" rx="4" fill="url(#kit-${h})"/>
-    <!-- Right shin stripe -->
     <rect x="2" y="18" width="12" height="4" fill="${accent}" opacity="0.7"/>
-    <!-- Right sock -->
     <rect x="2" y="32" width="13" height="10" rx="3" fill="${kitLight}"/>
-    <!-- Right boot -->
     <ellipse cx="9" cy="43" rx="9" ry="5" fill="#111"/>
     <rect x="1" y="40" width="16" height="6" rx="3" fill="#111"/>
   </g>
-
-  <!-- BODY / KIT -->
   <g transform="translate(${84 + leanX}, 30)">
-    <!-- Torso -->
-    <path d="M-${shoulderW/2} 0 Q-${shoulderW/2+2} 30 -12 30 L12 30 Q${shoulderW/2+2} 30 ${shoulderW/2} 0 Z"
-          fill="url(#kit-${h})"/>
-    <!-- Kit side stripe -->
-    <path d="M-${shoulderW/2} 2 Q-${shoulderW/2-2} 18 -18 28 L-14 30 Q-${shoulderW/2+2} 30 -${shoulderW/2} 0 Z"
-          fill="${accent}" opacity="0.5"/>
-    <!-- Kit collar -->
+    <path d="M-${shoulderW/2} 0 Q-${shoulderW/2+2} 30 -12 30 L12 30 Q${shoulderW/2+2} 30 ${shoulderW/2} 0 Z" fill="url(#kit-${h})"/>
+    <path d="M-${shoulderW/2} 2 Q-${shoulderW/2-2} 18 -18 28 L-14 30 Q-${shoulderW/2+2} 30 -${shoulderW/2} 0 Z" fill="${accent}" opacity="0.5"/>
     <path d="M-8 0 Q0 -4 8 0 Q6 6 0 6 Q-6 6 -8 0 Z" fill="${skin}" stroke="${accent}" stroke-width="1.5"/>
-    <!-- Shirt number -->
-    <text x="0" y="20" text-anchor="middle" font-family="Arial Black,sans-serif"
-          font-size="10" font-weight="900" fill="rgba(255,255,255,0.85)"
-          style="text-shadow:0 1px 2px rgba(0,0,0,0.8)">${shirtNum}</text>
-    <!-- Left sleeve -->
+    <text x="0" y="20" text-anchor="middle" font-family="Arial Black,sans-serif" font-size="10" font-weight="900" fill="rgba(255,255,255,0.85)">${shirtNum}</text>
     <path d="M-${shoulderW/2} 0 L-${shoulderW/2+4} 14 L-${shoulderW/2-4} 14 Z" fill="${accent}" opacity="0.8"/>
-    <!-- Right sleeve -->
     <path d="M${shoulderW/2} 0 L${shoulderW/2+4} 14 L${shoulderW/2-4} 14 Z" fill="${accent}" opacity="0.8"/>
-    <!-- Left arm -->
     <rect x="-${shoulderW/2+4}" y="14" width="8" height="14" rx="3" fill="url(#skin-${h})"/>
-    <!-- Right arm -->
     <rect x="${shoulderW/2-4}" y="14" width="8" height="14" rx="3" fill="url(#skin-${h})"/>
   </g>
-
-  <!-- NECK -->
   <rect x="${84 + leanX - 5}" y="${30 - neckH}" width="10" height="${neckH}" rx="3" fill="url(#skin-${h})"/>
-
-  <!-- HEAD -->
   <g transform="translate(${84 + leanX}, ${20 - neckH})">
-    <!-- Head shape -->
     <ellipse cx="0" cy="0" rx="13" ry="15" fill="url(#skin-${h})"/>
-    <!-- Ear left -->
     <ellipse cx="-13" cy="1" rx="3" ry="4" fill="${skin}"/>
-    <!-- Ear right -->
     <ellipse cx="13" cy="1" rx="3" ry="4" fill="${skin}"/>
-
     ${generateHairSVG(hairStyle, hair, h)}
-
-    <!-- Eyes -->
     <ellipse cx="-5" cy="-1" rx="3" ry="2.5" fill="#fff"/>
     <ellipse cx="5" cy="-1" rx="3" ry="2.5" fill="#fff"/>
     <circle cx="-5" cy="-1" r="1.8" fill="#1a0800"/>
     <circle cx="5" cy="-1" r="1.8" fill="#1a0800"/>
-    <!-- Eye shine -->
     <circle cx="-4.2" cy="-1.8" r="0.6" fill="rgba(255,255,255,0.8)"/>
     <circle cx="5.8" cy="-1.8" r="0.6" fill="rgba(255,255,255,0.8)"/>
-    <!-- Eyebrows -->
     <path d="M-8 -4.5 Q-5 -6 -2 -4.5" stroke="${hair}" stroke-width="1.5" fill="none" stroke-linecap="round"/>
     <path d="M2 -4.5 Q5 -6 8 -4.5" stroke="${hair}" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-    <!-- Nose -->
     <path d="M-1.5 2 Q0 4 1.5 2" stroke="${adjustBrightness(skin,-30)}" stroke-width="1" fill="none"/>
-    <!-- Mouth — slight smile -->
     <path d="M-3.5 5.5 Q0 7.5 3.5 5.5" stroke="${adjustBrightness(skin,-40)}" stroke-width="1.2" fill="none" stroke-linecap="round"/>
   </g>
-
   ${pos === 'GK' ? `<rect x="${84+leanX-18}" y="22" width="36" height="28" rx="4" fill="${accent}" opacity="0.2" stroke="${accent}" stroke-width="1"/>` : ''}
 </svg>`;
-
   return svg;
 }
 
 function generateHairSVG(style, hairColor, h) {
   const styles = [
-    // Short neat
     `<ellipse cx="0" cy="-8" rx="13" ry="8" fill="${hairColor}"/>
      <rect x="-13" y="-8" width="26" height="5" fill="${hairColor}"/>`,
-    // Buzz cut / fade
     `<ellipse cx="0" cy="-10" rx="12" ry="6" fill="${hairColor}" opacity="0.7"/>
      <path d="M-13 -3 Q-13 -14 0 -15 Q13 -14 13 -3" fill="${hairColor}"/>`,
-    // Curly / afro-ish
     `<ellipse cx="0" cy="-11" rx="14" ry="9" fill="${hairColor}"/>
      <circle cx="-9" cy="-12" r="5" fill="${hairColor}"/>
      <circle cx="9" cy="-12" r="5" fill="${hairColor}"/>
      <circle cx="0" cy="-15" r="5" fill="${hairColor}"/>`,
-    // Long / flowing sides
     `<path d="M-13 -3 Q-16 8 -14 14 L-10 14 Q-12 6 -11 -2 Z" fill="${hairColor}"/>
      <path d="M13 -3 Q16 8 14 14 L10 14 Q12 6 11 -2 Z" fill="${hairColor}"/>
      <path d="M-13 -3 Q-13 -16 0 -16 Q13 -16 13 -3" fill="${hairColor}"/>`,
-    // Mohawk / spiky
     `<path d="M-8 -8 Q0 -20 8 -8 Q4 -6 0 -5 Q-4 -6 -8 -8 Z" fill="${hairColor}"/>
      <rect x="-3" y="-20" width="6" height="12" rx="3" fill="${hairColor}"/>`,
   ];
@@ -1555,6 +1519,32 @@ function getAttrColor(v) {
   return '#9E9E9E';
 }
 
+function getPlayerEmoji(pos) {
+  if (pos === 'GK') return '🧤';
+  if (['CB','LB','RB','LWB','RWB'].includes(pos)) return '🛡️';
+  if (['CDM','CM','CAM','LM','RM'].includes(pos)) return '⚡';
+  return '⚽';
+}
+
+function setAvatar(player) {
+  const imageArea = document.getElementById('fc-image-area');
+  const imgUrl = PLAYER_IMAGES[player.name];
+  const fallback = getPlayerEmoji(player.pos);
+  const div = document.createElement('div');
+  div.className = 'fc-avatar-big';
+  if (imgUrl) {
+    const img = document.createElement('img');
+    img.alt = player.name;
+    img.src = imgUrl;
+    img.onerror = function() { div.innerHTML = fallback; };
+    div.appendChild(img);
+  } else {
+    div.innerHTML = fallback;
+  }
+  imageArea.innerHTML = '';
+  imageArea.appendChild(div);
+}
+
 function getTypeWatermark(cardType) {
   const overrides = {
     rare_gold: 'RARE', gold: 'GOLD', rare_silver: 'RARE', silver: 'SILVER',
@@ -1578,7 +1568,6 @@ function showResult(player, cardType, pos, ratingLabel, displayRating) {
   card.classList.add('result-flash-anim');
   setTimeout(() => card.classList.remove('result-flash-anim'), 700);
 
-  // Update authentic FUT card
   const cardEl = document.getElementById('fut-card-visual');
   cardEl.className = `fut-card ${cardType.cssClass}`;
   document.getElementById('fc-rating').textContent     = dr;
@@ -1587,14 +1576,11 @@ function showResult(player, cardType, pos, ratingLabel, displayRating) {
   document.getElementById('fc-flag').textContent       = getFlag(player.nation);
   document.getElementById('fc-club').textContent       = getClubEmoji(player.club);
 
-  // Player name — last name
   const nameParts = player.name.split(' ');
   const shortName = nameParts.length > 1 ? nameParts[nameParts.length - 1].toUpperCase() : player.name.toUpperCase();
   document.getElementById('fc-name').textContent = shortName;
 
-  // Set generated SVG avatar in the image area
-  const imageArea = document.getElementById('fc-image-area');
-  imageArea.innerHTML = generatePlayerSVG(player, cardType, dr);
+  setAvatar(player);
 
   const boost = dr - player.baseRating;
   const statKeys   = ['pace','shooting','passing','dribbling','defending','physical'];
@@ -1605,7 +1591,6 @@ function showResult(player, cardType, pos, ratingLabel, displayRating) {
     `<div class="fc-stat"><span class="fc-stat-val">${vals[i]}</span><span class="fc-stat-lbl">${a}</span></div>`
   ).join('');
 
-  // Result info panel
   document.getElementById('res-name').textContent  = player.name;
   document.getElementById('res-name').style.color  = cardType.color;
   document.getElementById('res-badges').innerHTML = `
@@ -1635,6 +1620,7 @@ function recordResult(player, cardType, ratingLabel, displayRating) {
   rollHistory.unshift({
     player, cardType, ratingLabel, displayRating: dr,
     time: now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' }),
+    locked: false,
   });
   if (rollHistory.length > 500) rollHistory.pop();
   saveToStorage();
@@ -1649,6 +1635,16 @@ function updateStats() {
 }
 
 // =============================================
+// LOCK / UNLOCK  ← THE MISSING FUNCTION
+// =============================================
+function toggleLock(idx) {
+  if (rollHistory[idx] === undefined) return;
+  rollHistory[idx].locked = !rollHistory[idx].locked;
+  saveToStorage();
+  renderHistory();
+}
+
+// =============================================
 // HISTORY
 // =============================================
 function setSort(mode) {
@@ -1659,7 +1655,7 @@ function setSort(mode) {
 }
 function setFilter(mode) {
   historyFilter = mode;
-  ['all','special','icon','90','85'].forEach(k =>
+  ['all','special','icon','90','85','locked'].forEach(k =>
     document.getElementById('hf-' + k).classList.toggle('active', k === mode)
   );
   renderHistory();
@@ -1671,9 +1667,10 @@ function onHistorySearch(val) {
 function getDisplayedHistory() {
   let items = [...rollHistory];
   if (historyFilter === 'special') items = items.filter(i => !['gold','silver','bronze'].includes(i.cardType.tier));
-  else if (historyFilter === 'icon') items = items.filter(i => i.cardType.tier === 'icon');
-  else if (historyFilter === '90')   items = items.filter(i => i.displayRating >= 90);
-  else if (historyFilter === '85')   items = items.filter(i => i.displayRating >= 85);
+  else if (historyFilter === 'icon')   items = items.filter(i => i.cardType.tier === 'icon');
+  else if (historyFilter === '90')     items = items.filter(i => i.displayRating >= 90);
+  else if (historyFilter === '85')     items = items.filter(i => i.displayRating >= 85);
+  else if (historyFilter === 'locked') items = items.filter(i => i.locked);
   if (historySearch) {
     items = items.filter(i =>
       i.player.name.toLowerCase().includes(historySearch) ||
@@ -1704,8 +1701,9 @@ function renderHistory() {
     const origIdx  = rollHistory.indexOf(item);
     const rankLabel = historySort === 'best' ? `#${i+1}` : `${origIdx+1}`;
     const isTopBest = i === 0 && historySort === 'best';
+    const isLocked  = !!item.locked;
     return `
-    <div class="history-item" onclick="viewHistoryCard(${origIdx})" title="Click to view full card">
+    <div class="history-item${isLocked ? ' is-locked' : ''}" onclick="viewHistoryCard(${origIdx})" title="Click to view full card">
       <span class="history-num" style="${isTopBest ? 'color:var(--gold);font-size:1rem' : ''}">${rankLabel}</span>
       <div class="history-mini-card ${item.cardType.cssClass}">
         <div class="history-mini-rating">${item.displayRating}</div>
@@ -1715,8 +1713,8 @@ function renderHistory() {
         <div class="history-name" style="color:${item.cardType.color}">${item.player.name}</div>
         <div class="history-sub">${item.cardType.label} · ${item.player.club} · ${item.player.nation}</div>
       </div>
-      <div class="history-right">
-        <div class="history-tier-dot" style="background:${item.cardType.color}"></div>
+      <div class="history-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+        <button class="lock-btn${isLocked ? ' locked' : ''}" onclick="event.stopPropagation();toggleLock(${origIdx})" title="${isLocked ? 'Unlock card' : 'Lock card'}">${isLocked ? '🔒' : '🔓'}</button>
         <div class="history-time">${item.time}</div>
         <div class="history-view-hint">👁 View</div>
       </div>
@@ -1743,6 +1741,7 @@ function saveToStorage() {
         ratingLabel:   item.ratingLabel,
         displayRating: item.displayRating,
         time:          item.time,
+        locked:        item.locked || false,
       })),
       stats,
       autoDelete: {
@@ -1763,7 +1762,14 @@ function loadFromStorage() {
         const cardType = CARD_TYPES.find(t => t.key === item.cardTypeKey);
         if (!cardType) return null;
         const dbPlayer = REAL_PLAYERS.find(p => p.name === item.player.name) || item.player;
-        return { player: { ...dbPlayer, ...item.player }, cardType, ratingLabel: item.ratingLabel, displayRating: item.displayRating, time: item.time };
+        return {
+          player: { ...dbPlayer, ...item.player },
+          cardType,
+          ratingLabel:   item.ratingLabel,
+          displayRating: item.displayRating,
+          time:          item.time,
+          locked:        item.locked || false,
+        };
       }).filter(Boolean);
     }
     if (payload.stats) stats = payload.stats;
@@ -1789,10 +1795,21 @@ function loadFromStorage() {
   } catch(e) { console.warn('Load failed', e); }
 }
 function clearHistory() {
-  rollHistory = [];
-  stats = { total:0, specials:0, ratingSum:0, best:0 };
+  // Preserve locked cards when clearing
+  const lockedCards = rollHistory.filter(item => item.locked);
+  rollHistory = lockedCards;
+  // Recalculate stats from remaining locked cards
+  stats = { total: 0, specials: 0, ratingSum: 0, best: 0 };
+  lockedCards.forEach(item => {
+    stats.total++;
+    if (!['gold','silver','bronze'].includes(item.cardType.tier)) stats.specials++;
+    stats.ratingSum += item.displayRating;
+    if (item.displayRating > stats.best) stats.best = item.displayRating;
+  });
   saveToStorage(); updateStats(); renderHistory();
-  document.getElementById('result-section').classList.remove('visible');
+  if (lockedCards.length === 0) {
+    document.getElementById('result-section').classList.remove('visible');
+  }
   if (autoInterval) stopAuto(false);
 }
 
