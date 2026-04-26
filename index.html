@@ -998,7 +998,9 @@ function loadFromStorage(){
       rollHistory=payload.rollHistory.map(item=>{
         const ct=CARD_TYPES.find(t=>t.key===item.cardTypeKey);if(!ct)return null;
         const dbp=REAL_PLAYERS.find(p=>p.name===item.player.name)||item.player;
-        return{player:{...dbp,...item.player},cardType:ct,ratingLabel:item.ratingLabel,displayRating:item.displayRating,time:item.time,locked:!!item.locked};
+        const restoredPlayer={...dbp,...item.player};
+        delete restoredPlayer.locked;
+        return{player:restoredPlayer,cardType:ct,ratingLabel:item.ratingLabel,displayRating:item.displayRating,time:item.time,locked:!!item.locked};
       }).filter(Boolean);
     }
     if(payload.stats)stats=payload.stats;
@@ -1010,8 +1012,7 @@ function loadFromStorage(){
       updateBadge('autodel');
     }
   }catch(e){console.warn('Load failed',e);}
-}
-function clearHistory(){
+}function clearHistory(){
   rollHistory=[];stats={total:0,specials:0,ratingSum:0,best:0};
   saveToStorage();updateStats();renderHistory();
   document.getElementById('result-section').classList.remove('visible');
